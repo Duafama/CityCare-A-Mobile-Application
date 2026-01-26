@@ -1,21 +1,21 @@
-<<<<<<< HEAD
-# first_flutter_project
+# CityCare – A Mobile Application
 
-A new Flutter project.
+CityCare is a Flutter-based mobile application that allows citizens to submit complaints, track city issues, and communicate with departments digitally.
 
-## Getting Started
+## Features
+- User registration and login
+- Submit and manage complaints
+- Admin dashboard for complaint management
+- Reports and department monitoring
+- Profile management
 
-This project is a starting point for a Flutter application.
+## Tech Stack
+- Flutter (Frontend)
+- Dart
+- Firebase / Backend (if used, otherwise remove)
+- JSON-based local data handling (if applicable)
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-=======
-# CityCare-A-Mobile-Application
-CityCare is a flutter based android application.
->>>>>>> 8c12172825353e090c2cc751d1c3c9df05761a3c
+## How to Run
+```bash
+flutter pub get
+flutter run
