@@ -1,0 +1,30 @@
+name: city_care
+description: "City Care - Keep Your City Clean"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  google_fonts: ^4.0.3
+     
+  fl_chart: ^1.1.1 # check latest version on pub.dev
+  image_picker: ^0.8.7+6
+
+     
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # Add this assets section for images
+  assets:
+    - assets/images/
