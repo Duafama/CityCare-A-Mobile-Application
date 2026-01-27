@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  google_fonts: ^4.0.3
+  google_fonts: ^5.0.0
      
   fl_chart: ^1.1.1 # check latest version on pub.dev
   image_picker: ^0.8.7+6

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:city_care/admin/admin_dashboard.dart';
+import 'package:city_care/department/department_dashboard.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -357,23 +358,43 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 40),
                 //admin button
                 TextButton(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AdminDashboard(),
-      ),
-    );
-  },
-  child: Text(
-    "Login as Admin",
-    style: TextStyle(
-      color: Colors.red,
-      fontWeight: FontWeight.bold,
-    ),
-  ),
-),
-//
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AdminDashboard(),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    "Login as Admin",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ), 
+                  // department button 
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DepartmentDashboard(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      "Login as Department",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+  
+
+
                 // Footer
                 Center(
                   child: Text(

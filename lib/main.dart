@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:city_care/admin/app_routes.dart';
+import 'package:city_care/department/department_routes.dart';
 
 
 // ADD THESE IMPORTS:
@@ -38,12 +39,14 @@ class CityCareApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const WelcomeScreen(),
+        '/': (context) => WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/dashboard': (context) => const DashboardScreen(),
-        // ADMIN ROUTES (THIS WAS MISSING)
-  ...AppRoutes.routes,
+        // ADMIN ROUTES 
+        ...AppRoutes.routes,
+        //DEPARTMENT ROUTES
+        ...DepartmentRoutes.routes,
       },
     );
   }
