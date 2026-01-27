@@ -3,21 +3,83 @@ import 'package:google_fonts/google_fonts.dart';
 import 'complaint_detail_screen.dart';
 import 'edit_complaint_screen.dart';
 import 'delete_confirmation_dialog.dart';
+import 'submit_screen.dart';
+import 'profile.dart';
+import 'dashboard_screen.dart';
 
-class MyComplaintsScreen extends StatefulWidget {
+class MyComplaintsScreen extends StatelessWidget {
   const MyComplaintsScreen({super.key});
 
   @override
-  State<MyComplaintsScreen> createState() => _MyComplaintsScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F1A3D),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0F1A3D),
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          'My Complaints',
+          style: GoogleFonts.poppins(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: const MyComplaintsContent(),
+      
+      // SAME navigation as dashboard
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2, // Always show My Complaints selected
+        onTap: (index) {
+          _handleNavigation(index, context);
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF0F1A3D),
+        unselectedItemColor: Colors.grey[600],
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            label: 'Submit',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list_alt),
+            label: 'My Complaints',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
-  int _selectedTab = 2;
+class MyComplaintsContent extends StatefulWidget {
+  const MyComplaintsContent({super.key});
+
+  @override
+  State<MyComplaintsContent> createState() => _MyComplaintsContentState();
+}
+
+class _MyComplaintsContentState extends State<MyComplaintsContent> {
   String _selectedFilter = 'All';
 
-  final List<String> _filters = ['All', 'Pending', 'In-Progress', 'Resolved'];
+  final List<String> _filters = ['All', 'Pending', 'Approved', 'In-Progress', 'Resolved'];
 
-  // Sample user complaints data
   final List<Map<String, dynamic>> _userComplaints = [
     {
       'id': '1',
@@ -79,134 +141,126 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
       ],
       'statusColor': Colors.orange,
     },
+    {
+      'id': '6',
+      'category': 'Park Maintenance',
+      'location': 'Central Park, Islamabad',
+      'date': '1/20/2026',
+      'status': 'Approved',
+      'description': 'Broken swings and damaged benches in children park.',
+      'images': [
+        'https://images.unsplash.com/photo-1576201836106-db175c4e4d9c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
+      ],
+      'statusColor': Colors.green,
+    },
+    {
+      'id': '7',
+      'category': 'Street Sign Missing',
+      'location': 'Jinnah Road, Faisalabad',
+      'date': '1/18/2026',
+      'status': 'Approved',
+      'description': 'No entry sign missing causing traffic confusion.',
+      'images': [
+        'https://images.unsplash.com/photo-1581017918605-4da9b5e9906b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
+      ],
+      'statusColor': Colors.green,
+    },
+    {
+      'id': '8',
+      'category': 'Illegal Parking',
+      'location': 'Commercial Area, Multan',
+      'date': '1/12/2026',
+      'status': 'In-Progress',
+      'description': 'Vehicles parked on footpath blocking pedestrian way.',
+      'images': [
+        'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
+      ],
+      'statusColor': Colors.blue,
+    },
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1A3D),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0F1A3D),
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'My Complaints',
-          style: GoogleFonts.poppins(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Column(
-        children: [
-          // Filter Chips Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Filter by Status',
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0F1A3D),
-                  ),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filter by Status',
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0F1A3D),
                 ),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _filters.map((filter) {
-                      bool isSelected = _selectedFilter == filter;
-                      return Container(
-                        margin: const EdgeInsets.only(right: 10),
-                        child: ChoiceChip(
-                          label: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            child: Text(
-                              filter,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: isSelected ? Colors.white : const Color(0xFF0F1A3D),
-                                fontWeight: FontWeight.w500,
-                              ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _filters.map((filter) {
+                    bool isSelected = _selectedFilter == filter;
+                    return Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      child: ChoiceChip(
+                        label: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          child: Text(
+                            filter,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: isSelected ? Colors.white : const Color(0xFF0F1A3D),
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          selected: isSelected,
-                          selectedColor: const Color(0xFF4A6FFF),
-                          backgroundColor: Colors.grey[100],
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedFilter = filter;
-                            });
-                          },
                         ),
-                      );
-                    }).toList(),
-                  ),
+                        selected: isSelected,
+                        selectedColor: const Color(0xFF4A6FFF),
+                        backgroundColor: Colors.grey[100],
+                        side: BorderSide.none,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedFilter = filter;
+                          });
+                        },
+                      ),
+                    );
+                  }).toList(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
 
-          // Complaints List
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _userComplaints.length,
-              itemBuilder: (context, index) {
-                final complaint = _userComplaints[index];
-                
-                // Filter logic
-                if (_selectedFilter != 'All' && complaint['status'] != _selectedFilter) {
-                  return const SizedBox.shrink();
-                }
-                
-                return _buildComplaintCard(complaint);
-              },
-            ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _userComplaints.length,
+            itemBuilder: (context, index) {
+              final complaint = _userComplaints[index];
+              
+              if (_selectedFilter != 'All' && complaint['status'] != _selectedFilter) {
+                return const SizedBox.shrink();
+              }
+              
+              return _buildComplaintCard(complaint);
+            },
           ),
-        ],
-      ),
-
-      // Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        height: 70,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              spreadRadius: 1,
-            ),
-          ],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildBottomNavItem(Icons.home, 'Home', 0),
-            _buildBottomNavItem(Icons.add_circle_outline, 'Submit', 1),
-            _buildBottomNavItem(Icons.list_alt, 'My Complaints', 2),
-            _buildBottomNavItem(Icons.person_outline, 'Profile', 3),
-          ],
-        ),
-      ),
+      ],
     );
   }
 
   Widget _buildComplaintCard(Map<String, dynamic> complaint) {
+    // Check if complaint status is Pending
+    bool isPending = complaint['status'] == 'Pending';
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -224,7 +278,6 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Complaint Header
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -296,7 +349,6 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
             ),
           ),
 
-          // Preview Image
           if (complaint['images'].isNotEmpty)
             Container(
               height: 150,
@@ -309,13 +361,11 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
               ),
             ),
 
-          // Action Buttons
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // View Details Button
                 Expanded(
                   child: Container(
                     height: 45,
@@ -327,7 +377,12 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                     ),
                     child: ElevatedButton(
                       onPressed: () {
-                        _viewComplaintDetails(complaint);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ComplaintDetailScreen(complaint: complaint),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
@@ -356,93 +411,53 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                 ),
                 const SizedBox(width: 12),
 
-                // Action Buttons
-                Row(
-                  children: [
-                    // Edit Button
-                    Container(
-                      width: 45,
-                      height: 45,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F1A3D).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                // Show Edit and Delete buttons only for Pending complaints
+                if (isPending)
+                  Row(
+                    children: [
+                      Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F1A3D).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.edit_outlined, 
+                              color: Color(0xFF0F1A3D)),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditComplaintScreen(complaint: complaint),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      child: IconButton(
-                        icon: const Icon(Icons.edit_outlined, 
-                            color: Color(0xFF0F1A3D)),
-                        onPressed: () {
-                          _editComplaint(complaint);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
 
-                    // Delete Button
-                    Container(
-                      width: 45,
-                      height: 45,
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                      Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.delete_outline, 
+                              color: Colors.red),
+                          onPressed: () {
+                            _deleteComplaint(complaint);
+                          },
+                        ),
                       ),
-                      child: IconButton(
-                        icon: const Icon(Icons.delete_outline, 
-                            color: Colors.red),
-                        onPressed: () {
-                          _deleteComplaint(complaint);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => _handleBottomNavTap(index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[600],
-            size: 26,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[600],
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _viewComplaintDetails(Map<String, dynamic> complaint) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ComplaintDetailScreen(complaint: complaint),
-      ),
-    );
-  }
-
-  void _editComplaint(Map<String, dynamic> complaint) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditComplaintScreen(complaint: complaint),
       ),
     );
   }
@@ -453,7 +468,9 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
       builder: (context) => DeleteConfirmationDialog(
         complaintTitle: complaint['category'],
         onConfirm: () {
-          // Simulate delete action
+          setState(() {
+            _userComplaints.removeWhere((item) => item['id'] == complaint['id']);
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${complaint['category']} deleted successfully'),
@@ -465,14 +482,31 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
       ),
     );
   }
+}
 
-  void _handleBottomNavTap(int index) {
-    setState(() {
-      _selectedTab = index;
-    });
-    
-    if (index != 2) {
-      Navigator.pop(context);
-    }
+// Navigation function (same for all screens)
+void _handleNavigation(int index, BuildContext context) {
+  switch (index) {
+    case 0: // Home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+      break;
+    case 1: // Submit
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SubmitScreen()),
+      );
+      break;
+    case 2: // My Complaints
+      // Already here
+      break;
+    case 3: // Profile
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
+      break;
   }
 }

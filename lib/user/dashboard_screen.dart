@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'notification_screen.dart'; // Add this line at the top
-import 'submit_screen.dart'; // Add this at the top
-import 'comments_screen.dart'; // Add this line
-import 'my_complaints_screen.dart'; // Add this import
+import 'notification_screen.dart';
+import 'submit_screen.dart';
+import 'comments_screen.dart';
+import 'my_complaints_screen.dart';
 import 'profile.dart';
-import 'chatbot.dart'; // अगर chatbot भी access करना है
+import 'chatbot.dart'; 
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,13 +15,12 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _selectedTab = 0;
   String _selectedFilter = 'All';
-  final int _notificationCount = 3; // Number of notifications
+  final int _notificationCount = 3;
 
-  final List<String> _filters = ['All', 'Pending', 'In-Progress', 'Resolved'];
+  // CHANGE 2: Changed "Pending" to "Approved" in filters
+  final List<String> _filters = ['All', 'Approved', 'In-Progress', 'Resolved'];
 
-  // Complaint Data
   final List<Map<String, dynamic>> _complaints = [
     {
       'id': '1',
@@ -30,9 +29,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'category': 'Broken Streetlight',
       'location': '123 Main street, Udaipur',
       'time': '4 hours ago',
-      'status': 'Pending',
+      'status': 'Approved', // Changed from Pending to Approved
       'description':
           'A streetlight near 123 Main Street is broken for 4 days now and is not working at nighttime. Last night there was an accident due to poor visibility.',
+      'fullDescription': // Added full description for Read More
+          'A streetlight near 123 Main Street is broken for 4 days now and is not working at nighttime. Last night there was an accident due to poor visibility. The streetlight pole is damaged at the base and needs replacement. Residents have reported multiple complaints about this issue. The area becomes completely dark after sunset, posing safety risks for pedestrians and vehicles.',
       'images': [
         'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
         'https://images.unsplash.com/photo-1518495978945-83d413a61108?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
@@ -40,6 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'likes': 24,
       'comments': 8,
       'isLiked': false,
+      'showFullDescription': false, // Added for Read More toggle
     },
     {
       'id': '2',
@@ -50,13 +52,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'time': '6 hours ago',
       'status': 'In-Progress',
       'description':
-          'Huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days. It\'s causing bad smell and health hazards for residents.',
+          'Huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days.',
+      'fullDescription':
+          'Huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days. It\'s causing bad smell and health hazards for residents. The garbage includes household waste, plastic bags, and food waste. Local shopkeepers are complaining about the foul smell affecting their businesses. The pile is attracting stray animals and insects.',
       'images': [
         'https://images.unsplash.com/photo-1558640476-437a2e9b7a2f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
       ],
       'likes': 42,
       'comments': 12,
       'isLiked': true,
+      'showFullDescription': false,
     },
     {
       'id': '3',
@@ -67,7 +72,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'time': '1 day ago',
       'status': 'Resolved',
       'description':
-          'Major water leakage near House #45 Street 7. Water is being wasted and road is getting damaged due to continuous flow.',
+          'Major water leakage near House #45 Street 7. Water is being wasted and road is getting damaged.',
+      'fullDescription':
+          'Major water leakage near House #45 Street 7. Water is being wasted and road is getting damaged due to continuous flow. The leakage is from a broken main water pipe. Water department has been informed and they have fixed the issue. Road repair work will be completed within 2 days.',
       'images': [
         'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
         'https://images.unsplash.com/photo-1563201516-9ea3c4c4fe30?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
@@ -75,6 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'likes': 18,
       'comments': 5,
       'isLiked': false,
+      'showFullDescription': false,
     },
     {
       'id': '4',
@@ -83,15 +91,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'category': 'Potholes',
       'location': 'Model Town',
       'time': '2 days ago',
-      'status': 'Pending',
+      'status': 'Approved', // Changed from Pending to Approved
       'description':
-          'Multiple large potholes on Main Boulevard causing traffic accidents daily. Need immediate repair before more accidents happen.',
+          'Multiple large potholes on Main Boulevard causing traffic accidents daily.',
+      'fullDescription':
+          'Multiple large potholes on Main Boulevard causing traffic accidents daily. Need immediate repair before more accidents happen. The potholes are 6-8 inches deep and spread across 50 meters of road. Multiple vehicles have reported tire damage. The road becomes dangerous during rainy season.',
       'images': [
         'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
       ],
       'likes': 56,
       'comments': 18,
       'isLiked': false,
+      'showFullDescription': false,
     },
   ];
 
@@ -111,15 +122,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: Colors.white,
           ),
         ),
+        // CHANGE 1: Removed back button by removing automaticallyImplyLeading
+        automaticallyImplyLeading: false, // This removes back button
         actions: [
-          // Notification Icon with Badge
           Stack(
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_none,
                     color: Colors.white, size: 26),
                 onPressed: () {
-                  _goToNotifications();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationScreen(),
+                    ),
+                  );
                 },
               ),
               if (_notificationCount > 0)
@@ -153,7 +170,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: Column(
         children: [
-          // Quick Action Button
           Container(
             padding: const EdgeInsets.all(16),
             color: const Color(0xFF0F1A3D),
@@ -166,7 +182,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               child: ElevatedButton(
                 onPressed: () {
-                  _goToSubmitComplaint();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SubmitScreen()),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4A6FFF),
@@ -194,7 +213,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Public Feed Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: Colors.white,
@@ -210,7 +228,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Filter Chips - FIXED FOR OVERFLOW
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -254,85 +271,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 1),
 
-          // Complaints Feed
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 70),
               itemCount: _complaints.length,
               itemBuilder: (context, index) {
                 final complaint = _complaints[index];
-
-                // Filter logic
                 if (_selectedFilter != 'All' &&
                     complaint['status'] != _selectedFilter) {
                   return const SizedBox.shrink();
                 }
-
-                return _buildComplaintCard(complaint);
+                return _buildComplaintCard(complaint, index);
               },
             ),
           ),
         ],
       ),
 
-      // Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        height: 70,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildBottomNavItem(Icons.home, 'Home', 0),
-            _buildBottomNavItem(Icons.add_circle_outline, 'Submit', 1),
-            _buildBottomNavItem(Icons.list_alt, 'My Complaints', 2),
-            _buildBottomNavItem(Icons.person_outline, 'Profile', 3),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTab = index;
-        });
-        _handleBottomNavTap(index);
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[600],
-            size: 26,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0,
+        onTap: (index) {
+          _handleNavigation(index);
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF0F1A3D),
+        unselectedItemColor: Colors.grey[600],
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[600],
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            label: 'Submit',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list_alt),
+            label: 'My Complaints',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildComplaintCard(Map<String, dynamic> complaint) {
+  void _handleNavigation(int index) {
+    switch (index) {
+      case 0:
+        break;
+      case 1:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SubmitScreen()),
+        );
+        break;
+      case 2:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MyComplaintsScreen()),
+        );
+        break;
+      case 3:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+        );
+        break;
+    }
+  }
+
+  Widget _buildComplaintCard(Map<String, dynamic> complaint, int index) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -350,7 +364,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // User Info
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -422,7 +435,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Category
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -436,7 +448,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Images Grid
           if (complaint['images'].isNotEmpty)
             Container(
               height: 180,
@@ -462,7 +473,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-          // Description
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -478,22 +488,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  complaint['description'],
+                  complaint['showFullDescription'] 
+                      ? complaint['fullDescription'] 
+                      : complaint['description'],
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: Colors.grey[700],
                     height: 1.5,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: complaint['showFullDescription'] ? null : 3,
+                  overflow: complaint['showFullDescription'] ? null : TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
+                // CHANGE 3: Improved Read More functionality
                 GestureDetector(
                   onTap: () {
-                    _viewComplaintDetails(complaint);
+                    setState(() {
+                      complaint['showFullDescription'] = !complaint['showFullDescription'];
+                    });
                   },
                   child: Text(
-                    'Read More',
+                    complaint['showFullDescription'] ? 'Read Less' : 'Read More',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       color: const Color(0xFF4A6FFF),
@@ -505,7 +520,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Time and Actions
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -526,7 +540,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 Row(
                   children: [
-                    // Like Button
                     GestureDetector(
                       onTap: () {
                         setState(() {
@@ -560,10 +573,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // Comment Button
                     GestureDetector(
                       onTap: () {
-                        _showComments(complaint);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CommentsScreen(complaint: complaint),
+                          ),
+                        );
                       },
                       child: Row(
                         children: [
@@ -581,10 +598,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // Share Button
                     GestureDetector(
                       onTap: () {
-                        _shareComplaint(complaint);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Shared: ${complaint['category']}'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
                       },
                       child: const Icon(Icons.share_outlined,
                           color: Colors.grey, size: 20),
@@ -601,7 +622,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'Pending':
+      case 'Approved': // Updated from Pending
         return Colors.orange;
       case 'In-Progress':
         return Colors.blue;
@@ -610,107 +631,5 @@ class _DashboardScreenState extends State<DashboardScreen> {
       default:
         return Colors.grey;
     }
-  }
-
-  void _handleBottomNavTap(int index) {
-    switch (index) {
-      case 0: // Home
-        // Already on home
-        break;
-      case 1: // Submit
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SubmitScreen(),
-          ),
-        );
-        break;
-      case 2: // My Complaints
-        _goToMyComplaints();
-        break;
-      case 3: // Profile
-        _goToProfile();
-        break;
-    }
-  }
-
-  void _goToSubmitComplaint() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SubmitScreen(),
-      ),
-    );
-  }
-
-  void _viewComplaintDetails(Map<String, dynamic> complaint) {
-    // Navigate to complaint details screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Viewing: ${complaint['category']}'),
-        backgroundColor: const Color(0xFF4A6FFF),
-      ),
-    );
-  }
-
-  void _goToMyComplaints() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const MyComplaintsScreen(),
-      ),
-    );
-  }
-
-//
-  void _goToChatbot() {
-    // Navigate to chatbot screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ChatbotScreen(),
-      ),
-    );
-  }
-
-  //
-  void _goToProfile() {
-    // Navigate to profile screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ProfileScreen(), // यहाँ change
-      ),
-    );
-  }
-
-  void _goToNotifications() {
-    // Navigate to notifications screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const NotificationScreen(),
-      ),
-    );
-  }
-
-  void _showComments(Map<String, dynamic> complaint) {
-    // Navigate to comments screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CommentsScreen(complaint: complaint),
-      ),
-    );
-  }
-
-  void _shareComplaint(Map<String, dynamic> complaint) {
-    // Implement share functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Shared: ${complaint['category']}'),
-        backgroundColor: Colors.green,
-      ),
-    );
   }
 }

@@ -22,6 +22,12 @@ class ProfileScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+         leading: IconButton(
+    icon: const Icon(Icons.arrow_back),
+    onPressed: () {
+      Navigator.pop(context); // This goes back to previous screen
+    },
+  ),
       ),
       body: SingleChildScrollView(
         child: Column(

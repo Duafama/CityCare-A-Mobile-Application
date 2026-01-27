@@ -1,46 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-class SubmitScreen extends StatefulWidget {
+import 'my_complaints_screen.dart';
+import 'profile.dart';
+import 'dashboard_screen.dart';
+class SubmitScreen extends StatelessWidget {
   const SubmitScreen({super.key});
-
-  @override
-  State<SubmitScreen> createState() => _SubmitScreenState();
-}
-
-class _SubmitScreenState extends State<SubmitScreen> {
-  int _selectedTab = 1; // Submit tab selected by default
-
-  // Form controllers
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
-
-  // Form state
-  String _selectedCategory = 'Select a Category';
-  final List<String> _selectedImagePaths = []; // Store image URLs
-  bool _showMapPlaceholder = false;
-  bool _isPickingImage = false;
-
-  // Categories list
-  final List<String> _categories = [
-    'Select a Category',
-    'Broken Streetlight',
-    'Water Leakage',
-    'Garbage Pile Up',
-    'Potholes',
-    'Drainage Issue',
-    'Road Damage',
-    'Public Park Issue',
-    'Street Cleaning',
-    'Other'
-  ];
-
-  @override
-  void dispose() {
-    _descriptionController.dispose();
-    _locationController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,239 +29,281 @@ class _SubmitScreenState extends State<SubmitScreen> {
           },
         ),
       ),
-      body: Column(
-        children: [
-          // Complaint Form
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Category Dropdown
-                  _buildSectionTitle('Category:'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedCategory,
-                        isExpanded: true,
-                        icon: const Icon(Icons.arrow_drop_down,
-                            color: Color(0xFF4A6FFF)),
-                        items: _categories.map((String category) {
-                          return DropdownMenuItem<String>(
-                            value: category,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                category,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  color: category == 'Select a Category'
-                                      ? Colors.grey[500]
-                                      : const Color(0xFF0F1A3D),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedCategory = newValue!;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Description
-                  _buildSectionTitle('Description:'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: TextField(
-                      controller: _descriptionController,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        hintText:
-                            'Provide a detailed information about the issue',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.all(16),
-                      ),
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: const Color(0xFF0F1A3D),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Location
-                  _buildSectionTitle('Location:'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _locationController,
-                            decoration: InputDecoration(
-                              hintText: 'Address or Location of the issue',
-                              hintStyle: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: const Color(0xFF0F1A3D),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.location_on,
-                              color: Color(0xFF4A6FFF),
-                            ),
-                            onPressed: () {
-                              // Mock location
-                              setState(() {
-                                _locationController.text =
-                                    '123 Civil Lines, Gujranwala';
-                                _showMapPlaceholder = true;
-                              });
-                              _showSnackBar('Location added!');
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _locationController.text =
-                            'Current Location: Gujranwala, Pakistan';
-                        _showMapPlaceholder = true;
-                      });
-                      _showSnackBar('Using your current location!');
-                    },
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined,
-                            color: Color(0xFF4A6FFF), size: 18),
-                        const SizedBox(width: 6),
-                        Text(
-                          '📍 Use my location',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: const Color(0xFF4A6FFF),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Static Map UI (No API needed)
-                  if (_showMapPlaceholder) ...[
-                    const SizedBox(height: 16),
-                    _buildStaticMapUI(),
-                  ],
-
-                  const SizedBox(height: 20),
-
-                  // Attach Images
-                  _buildSectionTitle('Attach Images:'),
-                  const SizedBox(height: 8),
-                  _buildImagePickerSection(),
-                  const SizedBox(height: 20),
-
-                  // Submit Button
-                  Container(
-                    width: double.infinity,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4A6FFF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _submitComplaint,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4A6FFF),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        'Submit Complaint',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: const SubmitContent(),
+      
+      // SAME navigation as dashboard
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1, // Always show Submit selected
+        onTap: (index) {
+          _handleNavigation(index, context);
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF0F1A3D),
+        unselectedItemColor: Colors.grey[600],
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
           ),
-
-          // Bottom Navigation Bar
-          Container(
-            height: 70,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildBottomNavItem(Icons.home, 'Home', 0),
-                _buildBottomNavItem(Icons.add_circle, 'Submit', 1),
-                _buildBottomNavItem(Icons.list_alt, 'My Complaints', 2),
-                _buildBottomNavItem(Icons.person_outline, 'Profile', 3),
-              ],
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            label: 'Submit',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list_alt),
+            label: 'My Complaints',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
           ),
         ],
       ),
+    );
+  }
+}
+
+class SubmitContent extends StatefulWidget {
+  const SubmitContent({super.key});
+
+  @override
+  State<SubmitContent> createState() => _SubmitContentState();
+}
+
+class _SubmitContentState extends State<SubmitContent> {
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+
+  String _selectedCategory = 'Select a Category';
+  final List<String> _selectedImagePaths = [];
+  bool _showMapPlaceholder = false;
+  bool _isPickingImage = false;
+
+  final List<String> _categories = [
+    'Select a Category',
+    'Broken Streetlight',
+    'Water Leakage',
+    'Garbage Pile Up',
+    'Potholes',
+    'Drainage Issue',
+    'Road Damage',
+    'Public Park Issue',
+    'Street Cleaning',
+    'Other'
+  ];
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('Category:'),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedCategory,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down,
+                          color: Color(0xFF4A6FFF)),
+                      items: _categories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              category,
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                color: category == 'Select a Category'
+                                    ? Colors.grey[500]
+                                    : const Color(0xFF0F1A3D),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedCategory = newValue!;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                _buildSectionTitle('Description:'),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: TextField(
+                    controller: _descriptionController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Provide a detailed information about the issue',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: const Color(0xFF0F1A3D),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                _buildSectionTitle('Location:'),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _locationController,
+                          decoration: InputDecoration(
+                            hintText: 'Address or Location of the issue',
+                            hintStyle: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                          ),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: const Color(0xFF0F1A3D),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.location_on,
+                            color: Color(0xFF4A6FFF),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _locationController.text =
+                                  '123 Civil Lines, Gujranwala';
+                              _showMapPlaceholder = true;
+                            });
+                            _showSnackBar('Location added!', context);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _locationController.text =
+                          'Current Location: Gujranwala, Pakistan';
+                      _showMapPlaceholder = true;
+                    });
+                    _showSnackBar('Using your current location!', context);
+                  },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined,
+                          color: Color(0xFF4A6FFF), size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        '📍 Use my location',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: const Color(0xFF4A6FFF),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (_showMapPlaceholder) ...[
+                  const SizedBox(height: 16),
+                  _buildStaticMapUI(),
+                ],
+
+                const SizedBox(height: 20),
+
+                _buildSectionTitle('Attach Images:'),
+                const SizedBox(height: 8),
+                _buildImagePickerSection(),
+                const SizedBox(height: 20),
+
+                Container(
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4A6FFF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _submitComplaint,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A6FFF),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Submit Complaint',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -312,7 +318,6 @@ class _SubmitScreenState extends State<SubmitScreen> {
     );
   }
 
-  // Static Map UI (Looks like Google Maps but no API)
   Widget _buildStaticMapUI() {
     return Container(
       height: 220,
@@ -329,16 +334,14 @@ class _SubmitScreenState extends State<SubmitScreen> {
       ),
       child: Stack(
         children: [
-          // Map Background (Google Maps style)
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: const Color(0xFFE8F5E9), // Light green like Google Maps
+              color: const Color(0xFFE8F5E9),
               border: Border.all(color: Colors.grey[300]!),
             ),
             child: Column(
               children: [
-                // Top bar (like Google Maps search)
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(
@@ -363,16 +366,13 @@ class _SubmitScreenState extends State<SubmitScreen> {
                   ),
                 ),
 
-                // Map Content
                 Expanded(
                   child: Stack(
                     children: [
-                      // Roads/Lines (simplified map)
                       CustomPaint(
                         painter: MapPainter(),
                       ),
 
-                      // Location Marker
                       Positioned(
                         top: 60,
                         left: MediaQuery.of(context).size.width / 2 - 15,
@@ -398,7 +398,6 @@ class _SubmitScreenState extends State<SubmitScreen> {
                         ),
                       ),
 
-                      // Compass
                       Positioned(
                         top: 10,
                         right: 10,
@@ -422,7 +421,6 @@ class _SubmitScreenState extends State<SubmitScreen> {
                         ),
                       ),
 
-                      // Zoom controls
                       Positioned(
                         bottom: 10,
                         right: 10,
@@ -471,7 +469,6 @@ class _SubmitScreenState extends State<SubmitScreen> {
             ),
           ),
 
-          // Info overlay
           Positioned(
             bottom: 20,
             left: 0,
@@ -568,7 +565,6 @@ class _SubmitScreenState extends State<SubmitScreen> {
           ),
         ),
 
-        // Display selected images
         if (_selectedImagePaths.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
@@ -630,46 +626,16 @@ class _SubmitScreenState extends State<SubmitScreen> {
     );
   }
 
-  Widget _buildBottomNavItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => _handleBottomNavTap(index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[600],
-            size: 26,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[600],
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickImages() async {
-    // Don't pick if already picking
     if (_isPickingImage) return;
 
     setState(() {
       _isPickingImage = true;
     });
 
-    // Simulate image picking delay (like loading from gallery)
     await Future.delayed(const Duration(milliseconds: 500));
 
     try {
-      // Add demo images (for frontend demonstration)
-      // In future, you can replace this with actual image picker
       final demoImages = [
         'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
         'https://images.unsplash.com/photo-1518495978945-83d413a61108?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
@@ -677,14 +643,13 @@ class _SubmitScreenState extends State<SubmitScreen> {
       ];
 
       setState(() {
-        // Add the demo images
         _selectedImagePaths.addAll(demoImages);
       });
 
-      _showSnackBar('${demoImages.length} images added successfully!');
+      _showSnackBar('${demoImages.length} images added successfully!', context);
     } catch (e) {
       print('Error: $e');
-      _showSnackBar('Error adding images');
+      _showSnackBar('Error adding images', context);
     } finally {
       setState(() {
         _isPickingImage = false;
@@ -696,28 +661,27 @@ class _SubmitScreenState extends State<SubmitScreen> {
     setState(() {
       _selectedImagePaths.removeAt(index);
     });
-    _showSnackBar('Image removed!');
+    _showSnackBar('Image removed!', context);
   }
 
   void _submitComplaint() {
     if (_selectedCategory == 'Select a Category') {
-      _showSnackBar('Please select a category');
+      _showSnackBar('Please select a category', context);
       return;
     }
 
     if (_descriptionController.text.isEmpty) {
-      _showSnackBar('Please provide a description');
+      _showSnackBar('Please provide a description', context);
       return;
     }
 
     if (_locationController.text.isEmpty) {
-      _showSnackBar('Please provide a location');
+      _showSnackBar('Please provide a location', context);
       return;
     }
 
-    _showSnackBar('✅ Complaint submitted successfully!');
+    _showSnackBar('✅ Complaint submitted successfully!', context);
 
-    // Reset form after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
       setState(() {
         _selectedCategory = 'Select a Category';
@@ -729,28 +693,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
     });
   }
 
-  void _handleBottomNavTap(int index) {
-    setState(() {
-      _selectedTab = index;
-    });
-
-    switch (index) {
-      case 0: // Home
-        Navigator.pop(context);
-        break;
-      case 1: // Submit
-        // Already on submit screen
-        break;
-      case 2: // My Complaints
-        _showSnackBar('Navigate to My Complaints');
-        break;
-      case 3: // Profile
-        _showSnackBar('Navigate to Profile');
-        break;
-    }
-  }
-
-  void _showSnackBar(String message) {
+  void _showSnackBar(String message, BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -760,7 +703,33 @@ class _SubmitScreenState extends State<SubmitScreen> {
   }
 }
 
-// Custom painter for map lines
+// Navigation function (same for all screens)
+void _handleNavigation(int index, BuildContext context) {
+  switch (index) {
+    case 0: // Home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+      break;
+    case 1: // Submit
+      // Already here
+      break;
+    case 2: // My Complaints
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const MyComplaintsScreen()),
+      );
+      break;
+    case 3: // Profile
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
+      break;
+  }
+}
+
 class MapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -769,7 +738,6 @@ class MapPainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
-    // Draw some roads/lines
     canvas.drawLine(
       Offset(size.width * 0.2, size.height * 0.3),
       Offset(size.width * 0.8, size.height * 0.3),
@@ -788,12 +756,10 @@ class MapPainter extends CustomPainter {
       paint,
     );
 
-    // Draw some buildings/parks
     final buildingPaint = Paint()
       ..color = Colors.grey[300]!
       ..style = PaintingStyle.fill;
 
-    // Buildings
     canvas.drawRect(
       Rect.fromPoints(
         Offset(size.width * 0.2, size.height * 0.4),
@@ -810,7 +776,6 @@ class MapPainter extends CustomPainter {
       buildingPaint,
     );
 
-    // Park (green area)
     final parkPaint = Paint()
       ..color = const Color(0xFFC8E6C9)
       ..style = PaintingStyle.fill;
