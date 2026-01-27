@@ -22,8 +22,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'location': 'Gulberg, Lahore',
       'time': '2 hours ago',
       'title': 'Garbage Pile Up',
-      'description': 'There is a huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days. It\'s causing bad smell and health hazards.',
-      'imageUrl': 'https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Garbage+Problem',
+      'description':
+          'There is a huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days. It\'s causing bad smell and health hazards.',
+      'imageUrl':
+          'https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=Garbage+Problem',
       'likes': 24,
       'comments': 8,
       'isLiked': false,
@@ -38,8 +40,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'location': 'DHA Phase 5',
       'time': '5 hours ago',
       'title': 'Broken Street Light',
-      'description': 'Street light pole number 45 on Street 12 is broken and hanging dangerously. It could fall any time and cause accident.',
-      'imageUrl': 'https://via.placeholder.com/400x300/4ECDC4/FFFFFF?text=Broken+Light',
+      'description':
+          'Street light pole number 45 on Street 12 is broken and hanging dangerously. It could fall any time and cause accident.',
+      'imageUrl':
+          'https://via.placeholder.com/400x300/4ECDC4/FFFFFF?text=Broken+Light',
       'likes': 42,
       'comments': 12,
       'isLiked': true,
@@ -54,8 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'location': 'Model Town',
       'time': '1 day ago',
       'title': 'Water Leakage Issue',
-      'description': 'Major water leakage near House #45 Street 7. Water is being wasted and road is getting damaged due to continuous flow.',
-      'imageUrl': 'https://via.placeholder.com/400x300/45B7D1/FFFFFF?text=Water+Leakage',
+      'description':
+          'Major water leakage near House #45 Street 7. Water is being wasted and road is getting damaged due to continuous flow.',
+      'imageUrl':
+          'https://via.placeholder.com/400x300/45B7D1/FFFFFF?text=Water+Leakage',
       'likes': 18,
       'comments': 5,
       'isLiked': false,
@@ -70,8 +76,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'location': 'Johar Town',
       'time': '2 days ago',
       'title': 'Potholes on Main Road',
-      'description': 'Multiple large potholes on Main Boulevard Johar Town causing traffic accidents daily. Need immediate repair.',
-      'imageUrl': 'https://via.placeholder.com/400x300/96CEB4/FFFFFF?text=Potholes',
+      'description':
+          'Multiple large potholes on Main Boulevard Johar Town causing traffic accidents daily. Need immediate repair.',
+      'imageUrl':
+          'https://via.placeholder.com/400x300/96CEB4/FFFFFF?text=Potholes',
       'likes': 56,
       'comments': 18,
       'isLiked': false,
@@ -86,8 +94,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'location': 'Wapda Town',
       'time': '3 days ago',
       'title': 'Stray Dogs Problem',
-      'description': 'Large number of stray dogs in Block C creating safety issues, especially for children going to school.',
-      'imageUrl': 'https://via.placeholder.com/400x300/FECA57/FFFFFF?text=Stray+Dogs',
+      'description':
+          'Large number of stray dogs in Block C creating safety issues, especially for children going to school.',
+      'imageUrl':
+          'https://via.placeholder.com/400x300/FECA57/FFFFFF?text=Stray+Dogs',
       'likes': 31,
       'comments': 9,
       'isLiked': true,
@@ -219,7 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 final category = _categories[index];
                 final isSelected = _selectedCategory == category;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                   child: GestureDetector(
                     onTap: () {
                       setState(() {
@@ -227,12 +238,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       });
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[100],
+                        color: isSelected
+                            ? const Color(0xFF4A6FFF)
+                            : Colors.grey[100],
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[300]!,
+                          color: isSelected
+                              ? const Color(0xFF4A6FFF)
+                              : Colors.grey[300]!,
                         ),
                       ),
                       child: Text(
@@ -240,7 +256,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: isSelected ? Colors.white : Colors.grey[700],
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -263,12 +280,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemCount: _complaints.length,
                 itemBuilder: (context, index) {
                   final complaint = _complaints[index];
-                  
+
                   // Filter by category
-                  if (_selectedCategory != 'All' && complaint['category'] != _selectedCategory) {
+                  if (_selectedCategory != 'All' &&
+                      complaint['category'] != _selectedCategory) {
                     return const SizedBox.shrink();
                   }
-                  
+
                   return _buildComplaintCard(complaint);
                 },
               ),
@@ -389,8 +407,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.location_on_outlined, 
-                            color: Colors.grey[500], size: 14),
+                          Icon(Icons.location_on_outlined,
+                              color: Colors.grey[500], size: 14),
                           const SizedBox(width: 4),
                           Text(
                             complaint['location'],
@@ -401,9 +419,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _getStatusColor(complaint['status']).withOpacity(0.1),
+                              color: _getStatusColor(complaint['status'])
+                                  .withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: _getStatusColor(complaint['status']),
@@ -440,7 +460,8 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               color: Colors.grey[100],
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(8)),
               image: DecorationImage(
                 image: NetworkImage(complaint['imageUrl']),
                 fit: BoxFit.cover,
@@ -457,7 +478,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFF4A6FFF).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -543,7 +565,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Row(
                       children: [
-                        Icon(Icons.arrow_upward, color: Colors.green[600], size: 18),
+                        Icon(Icons.arrow_upward,
+                            color: Colors.green[600], size: 18),
                         Text(
                           ' ${complaint['upvotes']}',
                           style: GoogleFonts.poppins(
@@ -554,15 +577,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.visibility_outlined, 
-                                color: Colors.grey[600], size: 14),
+                              Icon(Icons.visibility_outlined,
+                                  color: Colors.grey[600], size: 14),
                               const SizedBox(width: 4),
                               Text(
                                 '${(complaint['upvotes'] * 2.5).toInt()}',
@@ -651,7 +675,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.notifications_off_outlined, color: Colors.orange),
+                leading: const Icon(Icons.notifications_off_outlined,
+                    color: Colors.orange),
                 title: Text('Mute this user', style: GoogleFonts.poppins()),
                 onTap: () {
                   Navigator.pop(context);
@@ -958,7 +983,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pop(context);
                   },
                 );
-              }).toList(),
+              }),
             ],
           ),
         );
@@ -989,9 +1014,11 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildShareOption(Icons.message_outlined, 'Message', Colors.blue),
+                  _buildShareOption(
+                      Icons.message_outlined, 'Message', Colors.blue),
                   _buildShareOption(Icons.email_outlined, 'Email', Colors.red),
-                  _buildShareOption(Icons.copy_outlined, 'Copy Link', Colors.green),
+                  _buildShareOption(
+                      Icons.copy_outlined, 'Copy Link', Colors.green),
                   _buildShareOption(Icons.more_horiz, 'More', Colors.grey),
                 ],
               ),
@@ -1065,7 +1092,8 @@ class _HomeScreenState extends State<HomeScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
               ),
-              child: Text('Report', style: GoogleFonts.poppins(color: Colors.white)),
+              child: Text('Report',
+                  style: GoogleFonts.poppins(color: Colors.white)),
             ),
           ],
         );

@@ -10,17 +10,17 @@ class SubmitScreen extends StatefulWidget {
 
 class _SubmitScreenState extends State<SubmitScreen> {
   int _selectedTab = 1; // Submit tab selected by default
-  
+
   // Form controllers
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
-  
+
   // Form state
   String _selectedCategory = 'Select a Category';
-  List<String> _selectedImagePaths = []; // Store image URLs
+  final List<String> _selectedImagePaths = []; // Store image URLs
   bool _showMapPlaceholder = false;
   bool _isPickingImage = false;
-  
+
   // Categories list
   final List<String> _categories = [
     'Select a Category',
@@ -87,19 +87,21 @@ class _SubmitScreenState extends State<SubmitScreen> {
                       child: DropdownButton<String>(
                         value: _selectedCategory,
                         isExpanded: true,
-                        icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF4A6FFF)),
+                        icon: const Icon(Icons.arrow_drop_down,
+                            color: Color(0xFF4A6FFF)),
                         items: _categories.map((String category) {
                           return DropdownMenuItem<String>(
                             value: category,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 category,
                                 style: GoogleFonts.poppins(
                                   fontSize: 15,
-                                  color: category == 'Select a Category' 
-                                    ? Colors.grey[500]
-                                    : const Color(0xFF0F1A3D),
+                                  color: category == 'Select a Category'
+                                      ? Colors.grey[500]
+                                      : const Color(0xFF0F1A3D),
                                 ),
                               ),
                             ),
@@ -128,7 +130,8 @@ class _SubmitScreenState extends State<SubmitScreen> {
                       controller: _descriptionController,
                       maxLines: 5,
                       decoration: InputDecoration(
-                        hintText: 'Provide a detailed information about the issue',
+                        hintText:
+                            'Provide a detailed information about the issue',
                         hintStyle: GoogleFonts.poppins(
                           fontSize: 14,
                           color: Colors.grey[500],
@@ -186,7 +189,8 @@ class _SubmitScreenState extends State<SubmitScreen> {
                             onPressed: () {
                               // Mock location
                               setState(() {
-                                _locationController.text = '123 Civil Lines, Gujranwala';
+                                _locationController.text =
+                                    '123 Civil Lines, Gujranwala';
                                 _showMapPlaceholder = true;
                               });
                               _showSnackBar('Location added!');
@@ -200,14 +204,15 @@ class _SubmitScreenState extends State<SubmitScreen> {
                   GestureDetector(
                     onTap: () {
                       setState(() {
-                        _locationController.text = 'Current Location: Gujranwala, Pakistan';
+                        _locationController.text =
+                            'Current Location: Gujranwala, Pakistan';
                         _showMapPlaceholder = true;
                       });
                       _showSnackBar('Using your current location!');
                     },
                     child: Row(
                       children: [
-                        const Icon(Icons.location_on_outlined, 
+                        const Icon(Icons.location_on_outlined,
                             color: Color(0xFF4A6FFF), size: 18),
                         const SizedBox(width: 6),
                         Text(
@@ -221,13 +226,13 @@ class _SubmitScreenState extends State<SubmitScreen> {
                       ],
                     ),
                   ),
-                  
+
                   // Static Map UI (No API needed)
                   if (_showMapPlaceholder) ...[
                     const SizedBox(height: 16),
                     _buildStaticMapUI(),
                   ],
-                  
+
                   const SizedBox(height: 20),
 
                   // Attach Images
@@ -357,7 +362,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Map Content
                 Expanded(
                   child: Stack(
@@ -366,7 +371,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
                       CustomPaint(
                         painter: MapPainter(),
                       ),
-                      
+
                       // Location Marker
                       Positioned(
                         top: 60,
@@ -392,7 +397,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
                           ],
                         ),
                       ),
-                      
+
                       // Compass
                       Positioned(
                         top: 10,
@@ -416,7 +421,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
                           ),
                         ),
                       ),
-                      
+
                       // Zoom controls
                       Positioned(
                         bottom: 10,
@@ -465,7 +470,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
               ],
             ),
           ),
-          
+
           // Info overlay
           Positioned(
             bottom: 20,
@@ -473,7 +478,8 @@ class _SubmitScreenState extends State<SubmitScreen> {
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -561,7 +567,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
                   ),
           ),
         ),
-        
+
         // Display selected images
         if (_selectedImagePaths.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -653,14 +659,14 @@ class _SubmitScreenState extends State<SubmitScreen> {
   Future<void> _pickImages() async {
     // Don't pick if already picking
     if (_isPickingImage) return;
-    
+
     setState(() {
       _isPickingImage = true;
     });
-    
+
     // Simulate image picking delay (like loading from gallery)
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     try {
       // Add demo images (for frontend demonstration)
       // In future, you can replace this with actual image picker
@@ -669,14 +675,13 @@ class _SubmitScreenState extends State<SubmitScreen> {
         'https://images.unsplash.com/photo-1518495978945-83d413a61108?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
         'https://images.unsplash.com/photo-1558640476-437a2e9b7a2f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
       ];
-      
+
       setState(() {
         // Add the demo images
         _selectedImagePaths.addAll(demoImages);
       });
-      
+
       _showSnackBar('${demoImages.length} images added successfully!');
-      
     } catch (e) {
       print('Error: $e');
       _showSnackBar('Error adding images');
@@ -699,19 +704,19 @@ class _SubmitScreenState extends State<SubmitScreen> {
       _showSnackBar('Please select a category');
       return;
     }
-    
+
     if (_descriptionController.text.isEmpty) {
       _showSnackBar('Please provide a description');
       return;
     }
-    
+
     if (_locationController.text.isEmpty) {
       _showSnackBar('Please provide a location');
       return;
     }
-    
+
     _showSnackBar('✅ Complaint submitted successfully!');
-    
+
     // Reset form after 2 seconds
     Future.delayed(const Duration(seconds: 2), () {
       setState(() {
@@ -728,7 +733,7 @@ class _SubmitScreenState extends State<SubmitScreen> {
     setState(() {
       _selectedTab = index;
     });
-    
+
     switch (index) {
       case 0: // Home
         Navigator.pop(context);
@@ -770,24 +775,24 @@ class MapPainter extends CustomPainter {
       Offset(size.width * 0.8, size.height * 0.3),
       paint,
     );
-    
+
     canvas.drawLine(
       Offset(size.width * 0.4, size.height * 0.1),
       Offset(size.width * 0.4, size.height * 0.7),
       paint,
     );
-    
+
     canvas.drawLine(
       Offset(size.width * 0.6, size.height * 0.2),
       Offset(size.width * 0.9, size.height * 0.6),
       paint,
     );
-    
+
     // Draw some buildings/parks
     final buildingPaint = Paint()
       ..color = Colors.grey[300]!
       ..style = PaintingStyle.fill;
-    
+
     // Buildings
     canvas.drawRect(
       Rect.fromPoints(
@@ -796,7 +801,7 @@ class MapPainter extends CustomPainter {
       ),
       buildingPaint,
     );
-    
+
     canvas.drawRect(
       Rect.fromPoints(
         Offset(size.width * 0.5, size.height * 0.5),
@@ -804,12 +809,12 @@ class MapPainter extends CustomPainter {
       ),
       buildingPaint,
     );
-    
+
     // Park (green area)
     final parkPaint = Paint()
       ..color = const Color(0xFFC8E6C9)
       ..style = PaintingStyle.fill;
-    
+
     canvas.drawRect(
       Rect.fromPoints(
         Offset(size.width * 0.1, size.height * 0.6),

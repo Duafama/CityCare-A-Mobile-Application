@@ -6,6 +6,7 @@ import 'comments_screen.dart'; // Add this line
 import 'my_complaints_screen.dart'; // Add this import
 import 'profile.dart';
 import 'chatbot.dart'; // अगर chatbot भी access करना है
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -16,7 +17,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedTab = 0;
   String _selectedFilter = 'All';
-  int _notificationCount = 3; // Number of notifications
+  final int _notificationCount = 3; // Number of notifications
 
   final List<String> _filters = ['All', 'Pending', 'In-Progress', 'Resolved'];
 
@@ -115,7 +116,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_none, color: Colors.white, size: 26),
+                icon: const Icon(Icons.notifications_none,
+                    color: Colors.white, size: 26),
                 onPressed: () {
                   _goToNotifications();
                 },
@@ -223,7 +225,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               filter,
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
-                                color: isSelected ? Colors.white : const Color(0xFF0F1A3D),
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF0F1A3D),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -257,12 +261,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               itemCount: _complaints.length,
               itemBuilder: (context, index) {
                 final complaint = _complaints[index];
-                
+
                 // Filter logic
-                if (_selectedFilter != 'All' && complaint['status'] != _selectedFilter) {
+                if (_selectedFilter != 'All' &&
+                    complaint['status'] != _selectedFilter) {
                   return const SizedBox.shrink();
                 }
-                
+
                 return _buildComplaintCard(complaint);
               },
             ),
@@ -397,9 +402,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(complaint['status']).withOpacity(0.1),
+                    color:
+                        _getStatusColor(complaint['status']).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -537,7 +544,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             complaint['isLiked']
                                 ? Icons.favorite
                                 : Icons.favorite_border,
-                            color: complaint['isLiked'] ? Colors.red : Colors.grey,
+                            color:
+                                complaint['isLiked'] ? Colors.red : Colors.grey,
                             size: 20,
                           ),
                           const SizedBox(width: 4),
@@ -610,13 +618,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // Already on home
         break;
       case 1: // Submit
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const SubmitScreen(),
-    ),
-  );
-  break;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SubmitScreen(),
+          ),
+        );
+        break;
       case 2: // My Complaints
         _goToMyComplaints();
         break;
@@ -627,13 +635,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _goToSubmitComplaint() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const SubmitScreen(),
-    ),
-  );
-}
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SubmitScreen(),
+      ),
+    );
+  }
 
   void _viewComplaintDetails(Map<String, dynamic> complaint) {
     // Navigate to complaint details screen
@@ -645,16 +653,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-void _goToMyComplaints() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const MyComplaintsScreen(),
-    ),
-  );
-}
+  void _goToMyComplaints() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MyComplaintsScreen(),
+      ),
+    );
+  }
+
 //
-void _goToChatbot() {
+  void _goToChatbot() {
     // Navigate to chatbot screen
     Navigator.push(
       context,
@@ -663,6 +672,7 @@ void _goToChatbot() {
       ),
     );
   }
+
   //
   void _goToProfile() {
     // Navigate to profile screen
@@ -673,24 +683,26 @@ void _goToChatbot() {
       ),
     );
   }
-void _goToNotifications() {
-  // Navigate to notifications screen
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const NotificationScreen(),
-    ),
-  );
-}
-void _showComments(Map<String, dynamic> complaint) {
-  // Navigate to comments screen
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => CommentsScreen(complaint: complaint),
-    ),
-  );
-}
+
+  void _goToNotifications() {
+    // Navigate to notifications screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NotificationScreen(),
+      ),
+    );
+  }
+
+  void _showComments(Map<String, dynamic> complaint) {
+    // Navigate to comments screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CommentsScreen(complaint: complaint),
+      ),
+    );
+  }
 
   void _shareComplaint(Map<String, dynamic> complaint) {
     // Implement share functionality

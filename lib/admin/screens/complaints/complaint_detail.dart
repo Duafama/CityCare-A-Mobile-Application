@@ -123,8 +123,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   @override
   Widget build(BuildContext context) {
     // fallback for images
-    final List<String> images =
-        (complaint['images'] as List<dynamic>?)
+    final List<String> images = (complaint['images'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList() ??
         ["https://via.placeholder.com/150", "https://via.placeholder.com/200"];

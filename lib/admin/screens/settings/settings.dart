@@ -134,7 +134,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: primaryBlue),
             onPressed: () {
+              // Close dialog
               Navigator.of(ctx).pop();
+
+              // Go to WelcomeScreen and remove all previous routes
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/', // Welcome screen route
+                (route) => false,
+              );
             },
             child: const Text("Logout"),
           ),

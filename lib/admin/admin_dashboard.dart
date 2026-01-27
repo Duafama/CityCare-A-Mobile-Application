@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'admin_navigation.dart';
-import '/screens/welcome_screen.dart'; // import your WelcomeScreen
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -32,20 +31,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         centerTitle: true,
         backgroundColor: primaryBlue,
         elevation: 0,
-
-        /// ← Add action button here
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home_outlined),
-            tooltip: 'Back to Welcome',
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-              );
-            },
-          ),
-        ],
       ),
 
       /// ---------------- Drawer ----------------
