@@ -28,6 +28,7 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
 
       /// ---------------- AppBar ----------------
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Settings",

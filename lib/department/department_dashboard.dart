@@ -23,6 +23,7 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
 
       /// ---------------- AppBar ----------------
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         iconTheme: const IconThemeData(
           color: Colors.white,
         ),

@@ -31,6 +31,7 @@ class _DepartmentReportsScreenState extends State<DepartmentReportsScreen> {
 
       /// ---------------- AppBar ----------------
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Reports & Analytics",
