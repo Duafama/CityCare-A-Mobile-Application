@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'department_navigation.dart';
-import 'package:city_care/screens/welcome_screen.dart'; // update path if needed
+import 'package:city_care/user/welcome_screen.dart'; // update path if needed
 
 
 class DepartmentSettingsScreen extends StatefulWidget {

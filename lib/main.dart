@@ -5,10 +5,10 @@ import 'package:city_care/department/department_routes.dart';
 
 
 // ADD THESE IMPORTS:
-import 'screens/welcome_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'user/welcome_screen.dart';
+import 'user/login_screen.dart';
+import 'user/register_screen.dart';
+import 'user/dashboard_screen.dart';
 
 void main() {
   runApp(const CityCareApp());
