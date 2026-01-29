@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'department_navigation.dart';
 import 'package:city_care/user/welcome_screen.dart'; // update path if needed
 
-
 class DepartmentSettingsScreen extends StatefulWidget {
   const DepartmentSettingsScreen({super.key});
 
@@ -40,7 +39,7 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
       ),
 
       /// ---------------- Drawer ----------------
-    //   drawer: departmentDrawer(context),
+      //   drawer: departmentDrawer(context),
 
       /// ---------------- Body ----------------
       body: SingleChildScrollView(
@@ -77,7 +76,8 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: primaryBlue.withOpacity(0.1),
-                    child: const Icon(Icons.apartment, color: primaryBlue, size: 40),
+                    child: const Icon(Icons.apartment,
+                        color: primaryBlue, size: 40),
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -274,7 +274,7 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
           style: const TextStyle(fontSize: 13),
         ),
         value: value,
-        activeColor: primaryBlue,
+        activeThumbColor: primaryBlue,
         onChanged: onChanged,
       ),
     );
@@ -428,21 +428,20 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
               style: TextStyle(color: Colors.grey),
             ),
           ),
-            TextButton(
+          TextButton(
             onPressed: () {
-                Navigator.pop(context); // close the dialog
-                Navigator.pushAndRemoveUntil(
+              Navigator.pop(context); // close the dialog
+              Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => WelcomeScreen()),
                 (route) => false, // remove all previous routes
-                );
+              );
             },
             child: const Text(
-                "Logout",
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              "Logout",
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
-            ),
-
+          ),
         ],
       ),
     );

@@ -43,7 +43,7 @@ class _DepartmentReportsScreenState extends State<DepartmentReportsScreen> {
       ),
 
       /// ---------------- Drawer ----------------
-    //   drawer: departmentDrawer(context),
+      //   drawer: departmentDrawer(context),
 
       /// ---------------- Body ----------------
       body: SingleChildScrollView(
@@ -69,9 +69,10 @@ class _DepartmentReportsScreenState extends State<DepartmentReportsScreen> {
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: DropdownButtonFormField<String>(
-                value: selectedPeriod,
+                initialValue: selectedPeriod,
                 decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: InputBorder.none,
                 ),
                 items: periods
@@ -162,7 +163,8 @@ class _DepartmentReportsScreenState extends State<DepartmentReportsScreen> {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, double progress, Color color) {
+  Widget _buildMetricCard(
+      String title, String value, double progress, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

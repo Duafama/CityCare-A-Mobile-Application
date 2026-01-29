@@ -5,7 +5,6 @@ import 'submit_screen.dart';
 import 'comments_screen.dart';
 import 'my_complaints_screen.dart';
 import 'profile.dart';
-import 'chatbot.dart'; 
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -184,7 +183,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SubmitScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const SubmitScreen()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -212,7 +212,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: Colors.white,
@@ -270,7 +269,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 1),
-
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 70),
@@ -287,7 +285,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
         onTap: (index) {
@@ -434,7 +431,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -447,7 +443,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
           if (complaint['images'].isNotEmpty)
             Container(
               height: 180,
@@ -472,7 +467,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
               ),
             ),
-
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -488,8 +482,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  complaint['showFullDescription'] 
-                      ? complaint['fullDescription'] 
+                  complaint['showFullDescription']
+                      ? complaint['fullDescription']
                       : complaint['description'],
                   style: GoogleFonts.poppins(
                     fontSize: 14,
@@ -497,18 +491,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     height: 1.5,
                   ),
                   maxLines: complaint['showFullDescription'] ? null : 3,
-                  overflow: complaint['showFullDescription'] ? null : TextOverflow.ellipsis,
+                  overflow: complaint['showFullDescription']
+                      ? null
+                      : TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 // CHANGE 3: Improved Read More functionality
                 GestureDetector(
                   onTap: () {
                     setState(() {
-                      complaint['showFullDescription'] = !complaint['showFullDescription'];
+                      complaint['showFullDescription'] =
+                          !complaint['showFullDescription'];
                     });
                   },
                   child: Text(
-                    complaint['showFullDescription'] ? 'Read Less' : 'Read More',
+                    complaint['showFullDescription']
+                        ? 'Read Less'
+                        : 'Read More',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       color: const Color(0xFF4A6FFF),
@@ -519,7 +518,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -578,7 +576,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => CommentsScreen(complaint: complaint),
+                            builder: (context) =>
+                                CommentsScreen(complaint: complaint),
                           ),
                         );
                       },

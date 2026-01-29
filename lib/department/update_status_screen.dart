@@ -64,9 +64,10 @@ class _UpdateStatusScreenState extends State<UpdateStatusScreen> {
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: DropdownButtonFormField<String>(
-                value: status,
+                initialValue: status,
                 decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: InputBorder.none,
                 ),
                 items: const [
@@ -150,7 +151,6 @@ class _UpdateStatusScreenState extends State<UpdateStatusScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -194,7 +194,8 @@ class _UpdateStatusScreenState extends State<UpdateStatusScreen> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: imageUploaded ? Colors.grey : primaryBlue,
+                        backgroundColor:
+                            imageUploaded ? Colors.grey : primaryBlue,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -205,12 +206,12 @@ class _UpdateStatusScreenState extends State<UpdateStatusScreen> {
                         ),
                       ),
                       icon: const Icon(Icons.upload),
-                      label: Text(imageUploaded ? "Change Image" : "Upload Image"),
+                      label:
+                          Text(imageUploaded ? "Change Image" : "Upload Image"),
                     ),
                   ],
                 ),
               ),
-
               if (!imageUploaded) ...[
                 const SizedBox(height: 8),
                 Container(
