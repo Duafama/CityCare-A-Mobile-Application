@@ -183,13 +183,15 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                             ),
                           ),
                           onPressed: _saveCategory,
-                          child: const Text(
-                            "Save Changes",
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
+                          child: FittedBox(
+                            fit: BoxFit
+                                .scaleDown, // scales down if too big, but doesn't truncate
+                            child: Text(
+                              "Save Changes",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),

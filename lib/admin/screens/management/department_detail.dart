@@ -157,13 +157,15 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
                             ),
                           ),
                           onPressed: _saveEdit,
-                          child: const Text(
-                            "Save Changes",
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
+                          child: FittedBox(
+                            fit: BoxFit
+                                .scaleDown, // scales down if too big, but doesn't truncate
+                            child: Text(
+                              "Save Changes",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
