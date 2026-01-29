@@ -63,20 +63,18 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
               .compareTo(_priorityValue(a['priority'])));
           break;
         case "name_a_z":
-          filteredComplaints.sort(
-              (a, b) => (a['title'] as String).compareTo(b['title'] as String));
+          filteredComplaints.sort((a, b) => a['title'].compareTo(b['title']));
           break;
         case "name_z_a":
-          filteredComplaints.sort(
-              (a, b) => (b['title'] as String).compareTo(a['title'] as String));
+          filteredComplaints.sort((a, b) => b['title'].compareTo(a['title']));
           break;
         case "date_new_old":
-          filteredComplaints.sort((a, b) =>
-              (b['date'] as DateTime).compareTo(a['date'] as DateTime));
+          filteredComplaints
+              .sort((a, b) => (b['date'] as DateTime).compareTo(a['date']));
           break;
         case "date_old_new":
-          filteredComplaints.sort((a, b) =>
-              (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+          filteredComplaints
+              .sort((a, b) => (a['date'] as DateTime).compareTo(b['date']));
           break;
       }
     }
@@ -84,11 +82,9 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
     return Scaffold(
       backgroundColor: lightGrey,
       appBar: AppBar(
-        title: Text(
-          "$status Complaints",
-          style:
-              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: Text("$status Complaints",
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -96,14 +92,17 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            /// FILTER + SORT
             Row(
               children: [
                 Expanded(child: _buildDepartmentFilter()),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(child: _buildSortDropdown()),
               ],
             ),
             const SizedBox(height: 16),
+
+            /// LIST
             Expanded(
               child: filteredComplaints.isEmpty
                   ? Center(
@@ -122,30 +121,58 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
     );
   }
 
+  /// ---------------- FILTER DROPDOWN ----------------
   Widget _buildDepartmentFilter() {
-    return DropdownButtonHideUnderline(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+    return _styledDropdown(
+      value: selectedDept,
+      hint: "Filter",
+      items: [
+        const DropdownMenuItem<String>(
+          value: null,
+          child:
+              SizedBox(width: double.infinity, child: Text("All Departments")),
         ),
-        child: DropdownButton<String>(
-          isExpanded: true,
-          hint: const Text("Filter"),
-          value: selectedDept,
-          items: [
-            const DropdownMenuItem(value: null, child: Text("All Departments")),
-            ...departments
-                .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-          ],
-          onChanged: (val) => setState(() => selectedDept = val),
+        ...departments.map(
+          (d) => DropdownMenuItem<String>(
+            value: d,
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(d, softWrap: true),
+            ),
+          ),
         ),
-      ),
+      ],
+      onChanged: (val) => setState(() => selectedDept = val),
     );
   }
 
+  /// ---------------- SORT DROPDOWN ----------------
   Widget _buildSortDropdown() {
+    return _styledDropdown(
+      value: sortOrder,
+      hint: "Sort",
+      items: sortOptions
+          .map(
+            (o) => DropdownMenuItem<String>(
+              value: o['value'],
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(o['label']!, softWrap: true),
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: (val) => setState(() => sortOrder = val),
+    );
+  }
+
+  /// ---------------- COMMON DROPDOWN STYLE ----------------
+  Widget _styledDropdown({
+    required String? value,
+    required String hint,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?) onChanged,
+  }) {
     return DropdownButtonHideUnderline(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -155,18 +182,18 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
         ),
         child: DropdownButton<String>(
           isExpanded: true,
-          hint: const Text("Sort"),
-          value: sortOrder,
-          items: sortOptions
-              .map((o) =>
-                  DropdownMenuItem(value: o['value'], child: Text(o['label']!)))
-              .toList(),
-          onChanged: (val) => setState(() => sortOrder = val),
+          value: value,
+          hint: Text(hint, overflow: TextOverflow.ellipsis),
+          menuMaxHeight: 300,
+          style: const TextStyle(color: Colors.black),
+          items: items,
+          onChanged: onChanged,
         ),
       ),
     );
   }
 
+  /// ---------------- COMPLAINT CARD ----------------
   Widget _complaintCard(Map<String, dynamic> complaint) {
     final Color priorityColor = _priorityColor(complaint['priority']);
 
@@ -207,82 +234,49 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
     );
   }
 
+  /// ---------------- ACTION BUTTON WITH DIALOG ----------------
   Widget _actionButton(
       String text, Color color, Map<String, dynamic> complaint) {
     return ElevatedButton(
-      onPressed: () => _confirmAction(
-          complaint, text == "Approve" ? "Approved" : "Rejected"),
+      onPressed: () => _showActionDialog(text, complaint),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 12),
       ),
       child: Text(text, style: const TextStyle(fontSize: 12)),
     );
   }
 
-  void _confirmAction(Map<String, dynamic> complaint, String action) {
+  void _showActionDialog(String action, Map<String, dynamic> complaint) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              action == "Approved" ? Icons.check_circle : Icons.cancel,
-              color: action == "Approved" ? Colors.green : Colors.red,
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text("Confirm $action",
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18)),
-            ),
-          ],
-        ),
-        content:
-            Text("Are you sure you want to mark this complaint as $action?"),
+        title: Text("$action Complaint",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure you want to $action this complaint?"),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: action == "Approve" ? Colors.green : Colors.red,
+            ),
             onPressed: () {
               Navigator.pop(context);
-              _showActionResult(action);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Complaint $action successfully"),
+                  backgroundColor:
+                      action == "Approve" ? Colors.green : Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             },
-            child: const Text("Yes"),
+            child: const Text("Confirm", style: TextStyle(color: Colors.white)),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _showActionResult(String action) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              action == "Approved" ? Icons.check_circle : Icons.cancel,
-              color: action == "Approved" ? Colors.green : Colors.red,
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text("Complaint $action",
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18)),
-            ),
-          ],
-        ),
-        content: Text("The complaint has been $action successfully."),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text("OK")),
         ],
       ),
     );
