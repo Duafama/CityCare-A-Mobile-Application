@@ -123,58 +123,58 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
 
             const SizedBox(height: 28),
 
-            /// -------- NOTIFICATIONS SECTION --------
-            const Text(
-              "Notifications",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
+            // /// -------- NOTIFICATIONS SECTION --------
+            // const Text(
+            //   "Notifications",
+            //   style: TextStyle(
+            //     fontSize: 18,
+            //     fontWeight: FontWeight.bold,
+            //     color: primaryBlue,
+            //   ),
+            // ),
+            // const SizedBox(height: 12),
 
-            _buildSettingCard(
-              icon: Icons.notifications,
-              title: "Push Notifications",
-              subtitle: "Receive push notifications for new complaints",
-              value: notificationsEnabled,
-              onChanged: (val) {
-                setState(() {
-                  notificationsEnabled = val;
-                });
-              },
-            ),
+            // _buildSettingCard(
+            //   icon: Icons.notifications,
+            //   title: "Push Notifications",
+            //   subtitle: "Receive push notifications for new complaints",
+            //   value: notificationsEnabled,
+            //   onChanged: (val) {
+            //     setState(() {
+            //       notificationsEnabled = val;
+            //     });
+            //   },
+            // ),
 
-            const SizedBox(height: 8),
+            // const SizedBox(height: 8),
 
-            _buildSettingCard(
-              icon: Icons.email,
-              title: "Email Alerts",
-              subtitle: "Receive email notifications",
-              value: emailAlerts,
-              onChanged: (val) {
-                setState(() {
-                  emailAlerts = val;
-                });
-              },
-            ),
+            // _buildSettingCard(
+            //   icon: Icons.email,
+            //   title: "Email Alerts",
+            //   subtitle: "Receive email notifications",
+            //   value: emailAlerts,
+            //   onChanged: (val) {
+            //     setState(() {
+            //       emailAlerts = val;
+            //     });
+            //   },
+            // ),
 
-            const SizedBox(height: 8),
+            // const SizedBox(height: 8),
 
-            _buildSettingCard(
-              icon: Icons.sms,
-              title: "SMS Alerts",
-              subtitle: "Receive SMS notifications",
-              value: smsAlerts,
-              onChanged: (val) {
-                setState(() {
-                  smsAlerts = val;
-                });
-              },
-            ),
+            // _buildSettingCard(
+            //   icon: Icons.sms,
+            //   title: "SMS Alerts",
+            //   subtitle: "Receive SMS notifications",
+            //   value: smsAlerts,
+            //   onChanged: (val) {
+            //     setState(() {
+            //       smsAlerts = val;
+            //     });
+            //   },
+            // ),
 
-            const SizedBox(height: 28),
+            // const SizedBox(height: 28),
 
             /// -------- ACCOUNT SECTION --------
             const Text(
