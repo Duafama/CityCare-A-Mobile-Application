@@ -16,6 +16,8 @@ dependencies:
      
   fl_chart: ^1.1.1 # check latest version on pub.dev
   image_picker: ^0.8.7+6
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
 
      
 dev_dependencies:

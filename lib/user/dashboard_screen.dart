@@ -33,10 +33,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'A streetlight near 123 Main Street is broken for 4 days now and is not working at nighttime. Last night there was an accident due to poor visibility.',
       'fullDescription': // Added full description for Read More
           'A streetlight near 123 Main Street is broken for 4 days now and is not working at nighttime. Last night there was an accident due to poor visibility. The streetlight pole is damaged at the base and needs replacement. Residents have reported multiple complaints about this issue. The area becomes completely dark after sunset, posing safety risks for pedestrians and vehicles.',
-      'images': [
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-        'https://images.unsplash.com/photo-1518495978945-83d413a61108?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
+         'images': [
+  'assets/images/street_image.jpg',
+  'assets/images/street_image.jpg',
+],
       'likes': 24,
       'comments': 8,
       'isLiked': false,
@@ -55,7 +55,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'fullDescription':
           'Huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days. It\'s causing bad smell and health hazards for residents. The garbage includes household waste, plastic bags, and food waste. Local shopkeepers are complaining about the foul smell affecting their businesses. The pile is attracting stray animals and insects.',
       'images': [
-        'https://images.unsplash.com/photo-1558640476-437a2e9b7a2f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
+        'https://images.unsplash.com/photo-1518495978945-83d413a61108?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
+        
       ],
       'likes': 42,
       'comments': 12,
@@ -457,12 +459,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       right: imgIndex < complaint['images'].length - 1 ? 12 : 0,
                     ),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      image: DecorationImage(
-                        image: NetworkImage(complaint['images'][imgIndex]),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+  borderRadius: BorderRadius.circular(12),
+  image: DecorationImage(
+    image: complaint['images'][imgIndex].toString().startsWith('http')
+        ? NetworkImage(complaint['images'][imgIndex])
+        : AssetImage(complaint['images'][imgIndex]) as ImageProvider,
+    fit: BoxFit.cover,
+  ),
+),
                   );
                 },
               ),

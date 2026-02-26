@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "947184587118",
+    "project_id": "citycare-3e41f",
+    "storage_bucket": "citycare-3e41f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:947184587118:android:8d993b77c8aa257883317f",
+        "android_client_info": {
+          "package_name": "com.example.first_flutter_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCn0gMrXMV1rijLYx5g-SLLFlmhxKVELv4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
