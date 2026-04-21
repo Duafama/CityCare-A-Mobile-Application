@@ -77,7 +77,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 DashboardCard(
                   title: "Resolved",
-                  count: "45",
+                  count: "40",
                   color: Color(0xFF00897B),
                 ),
               ],
