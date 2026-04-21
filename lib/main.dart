@@ -3,17 +3,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:city_care/admin/app_routes.dart';
 import 'package:city_care/department/department_routes.dart';
 import 'package:firebase_core/firebase_core.dart';
+//
+import 'package:city_care/services/payment_service.dart'; // ✅ Add this
 
 
 // ADD THESE IMPORTS:
+import 'user/auth_wrapper.dart';
 import 'user/welcome_screen.dart';
 import 'user/login_screen.dart';
 import 'user/register_screen.dart';
 import 'user/dashboard_screen.dart';
-
+import 'user/forgot_password_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  //
+  await PaymentService.initialize(); // ✅ Initialize Stripe
   runApp(const CityCareApp());
 }
 
@@ -42,9 +47,11 @@ class CityCareApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => WelcomeScreen(),
+        // '/': (context) => WelcomeScreen(),
+        '/': (context) => const AuthWrapper(), // 👈 YEH HONA CHAHIYE
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
+         '/forgot-password': (context) => const ForgotPasswordScreen(), 
         '/dashboard': (context) => const DashboardScreen(),
         // ADMIN ROUTES 
         ...AppRoutes.routes,

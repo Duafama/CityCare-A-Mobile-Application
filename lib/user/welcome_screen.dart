@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+//
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -7,7 +12,8 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: 
+      Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -29,6 +35,7 @@ class WelcomeScreen extends StatelessWidget {
                 /// ---------------- LOGO & BRANDING ----------------
                 Column(
                   children: [
+                   
                     // Container(
                     //   width: 100,
                     //   height: 100,
@@ -210,8 +217,10 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ),
         ),
+        
       ),
     );
+    
   }
 
   Widget _buildFeature(IconData icon, String label) {

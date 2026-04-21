@@ -7,18 +7,38 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
+  google_maps_flutter: ^2.3.0
+  geolocator: ^10.1.0
+  permission_handler: ^11.0.1
+  
 
   flutter:
+  
+  
+
+
     sdk: flutter
     
   cupertino_icons: ^1.0.8
   google_fonts: ^5.0.0
+
+   
+
+
      
   fl_chart: ^1.1.1 # check latest version on pub.dev
   image_picker: ^0.8.7+6
-  firebase_core: ^4.4.0
-  firebase_auth: ^6.1.4
-
+   # Firebase - Latest compatible versions
+  firebase_core: ^2.27.0
+  firebase_auth: ^4.19.0
+  cloud_firestore: ^4.17.0
+  # Stripe Payment Packages
+  flutter_stripe: ^12.0.2    # Stripe SDK
+  http: ^1.1.0                # For API calls
+  # google_fonts: ^6.1.0
+  
+  # Optional but recommended
+  flutter_dotenv: ^5.1.0  
      
 dev_dependencies:
   flutter_test:
@@ -31,3 +51,5 @@ flutter:
   # Add this assets section for images
   assets:
     - assets/images/
+    
+    - .env   # Add this line

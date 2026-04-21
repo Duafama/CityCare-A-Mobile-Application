@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'complaint_detail_screen.dart';
 import 'edit_complaint_screen.dart';
 import 'delete_confirmation_dialog.dart';
@@ -33,9 +35,8 @@ class MyComplaintsScreen extends StatelessWidget {
       ),
       body: const MyComplaintsContent(),
       
-      // SAME navigation as dashboard
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2, // Always show My Complaints selected
+        currentIndex: 2,
         onTap: (index) {
           _handleNavigation(index, context);
         },
@@ -76,113 +77,85 @@ class MyComplaintsContent extends StatefulWidget {
 }
 
 class _MyComplaintsContentState extends State<MyComplaintsContent> {
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
   String _selectedFilter = 'All';
 
   final List<String> _filters = ['All', 'Pending', 'Approved', 'In-Progress', 'Resolved'];
 
-  final List<Map<String, dynamic>> _userComplaints = [
-    {
-      'id': '1',
-      'category': 'Broken Streetlight',
-      'location': '123 Main street, Udaypur',
-      'date': '1/3/2026',
-      'status': 'Approved',
-      'description': 'A streetlight near 123 Main Street is broken for 4 days now and is not working at nighttime.',
-      'images': [
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.green,
-    },
-    {
-      'id': '2',
-      'category': 'Pothole on Main Street',
-      'location': 'Lexton Street, XYZ',
-      'date': '12/23/2025',
-      'status': 'Pending',
-      'description': 'Large pothole causing traffic issues on main street.',
-      'images': [
-        'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.orange,
-    },
-    {
-      'id': '3',
-      'category': 'Garbage Pile Up',
-      'location': 'Gulberg, Lahore',
-      'date': '1/15/2026',
-      'status': 'In-Progress',
-      'description': 'Huge pile of garbage near Main Market Gulberg.',
-      'images': [
-        'https://images.unsplash.com/photo-1558640476-437a2e9b7a2f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.blue,
-    },
-    {
-      'id': '4',
-      'category': 'Water Leakage',
-      'location': 'DHA Phase 5, Karachi',
-      'date': '1/10/2026',
-      'status': 'Resolved',
-      'description': 'Major water leakage near House #45 Street 7.',
-      'images': [
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.teal,
-    },
-    {
-      'id': '5',
-      'category': 'Drainage Issue',
-      'location': 'Saddar, Rawalpindi',
-      'date': '1/5/2026',
-      'status': 'Pending',
-      'description': 'Blocked drainage causing water logging.',
-      'images': [
-        'https://images.unsplash.com/photo-1563201516-9ea3c4c4fe30?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.orange,
-    },
-    {
-      'id': '6',
-      'category': 'Park Maintenance',
-      'location': 'Central Park, Islamabad',
-      'date': '1/20/2026',
-      'status': 'Approved',
-      'description': 'Broken swings and damaged benches in children park.',
-      'images': [
-        'https://images.unsplash.com/photo-1576201836106-db175c4e4d9c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.green,
-    },
-    {
-      'id': '7',
-      'category': 'Street Sign Missing',
-      'location': 'Jinnah Road, Faisalabad',
-      'date': '1/18/2026',
-      'status': 'Approved',
-      'description': 'No entry sign missing causing traffic confusion.',
-      'images': [
-        'https://images.unsplash.com/photo-1581017918605-4da9b5e9906b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.green,
-    },
-    {
-      'id': '8',
-      'category': 'Illegal Parking',
-      'location': 'Commercial Area, Multan',
-      'date': '1/12/2026',
-      'status': 'In-Progress',
-      'description': 'Vehicles parked on footpath blocking pedestrian way.',
-      'images': [
-        'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'statusColor': Colors.blue,
-    },
-  ];
+  // 🔥 Helper function to get status color
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'Approved':
+        return Colors.green;
+      case 'In-Progress':
+        return Colors.blue;
+      case 'Resolved':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // 🔥 Format date from Timestamp
+  String _formatDate(Timestamp? timestamp) {
+    if (timestamp == null) return 'No date';
+    DateTime date = timestamp.toDate();
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  // 🔥 Delete complaint
+  Future<void> _deleteComplaint(String complaintId, String complaintTitle) async {
+    bool? confirm = await showDialog(
+      context: context,
+      builder: (context) => DeleteConfirmationDialog(
+        complaintTitle: complaintTitle,
+        onConfirm: () {
+          Navigator.pop(context, true);
+        },
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('complaints')
+            .doc(complaintId)
+            .delete();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$complaintTitle deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting complaint: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_currentUser == null) {
+      return const Center(
+        child: Text('Please login to view complaints'),
+      );
+    }
+
     return Column(
       children: [
+        // Filter Section
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.white,
@@ -238,18 +211,93 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
           ),
         ),
 
+        // 🔥 Firestore Stream Builder for Complaints
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _userComplaints.length,
-            itemBuilder: (context, index) {
-              final complaint = _userComplaints[index];
-              
-              if (_selectedFilter != 'All' && complaint['status'] != _selectedFilter) {
-                return const SizedBox.shrink();
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('complaints')
+                .where('citizenId', isEqualTo: _currentUser!.uid)
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF4A6FFF),
+                  ),
+                );
               }
-              
-              return _buildComplaintCard(complaint);
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Error: ${snapshot.error}',
+                    style: GoogleFonts.poppins(color: Colors.red),
+                  ),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.list_alt,
+                        size: 80,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No complaints found',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Submit your first complaint now',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Filter complaints based on selected filter
+              var complaints = snapshot.data!.docs.where((doc) {
+                if (_selectedFilter == 'All') return true;
+                return doc['status'] == _selectedFilter;
+              }).toList();
+
+              if (complaints.isEmpty) {
+                return Center(
+                  child: Text(
+                    'No $_selectedFilter complaints found',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: complaints.length,
+                itemBuilder: (context, index) {
+                  var doc = complaints[index];
+                  Map<String, dynamic> complaint = doc.data() as Map<String, dynamic>;
+                  complaint['id'] = doc.id;
+                  
+                  return _buildComplaintCard(complaint);
+                },
+              );
             },
           ),
         ),
@@ -258,9 +306,13 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
   }
 
   Widget _buildComplaintCard(Map<String, dynamic> complaint) {
-    // Check if complaint status is Pending
-    bool isPending = complaint['status'] == 'Pending';
-    
+    String status = complaint['status'] ?? 'Pending';
+    bool isPending = status == 'Pending';
+    Color statusColor = _getStatusColor(status);
+    String firstImage = complaint['beforeImages'] != null && complaint['beforeImages'].isNotEmpty
+        ? complaint['beforeImages'][0]
+        : '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -288,7 +340,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                   children: [
                     Expanded(
                       child: Text(
-                        complaint['category'],
+                        complaint['categoryName'] ?? 'Other',
                         style: GoogleFonts.poppins(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -299,14 +351,14 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: complaint['statusColor'].withOpacity(0.1),
+                        color: statusColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        complaint['status'],
+                        status,
                         style: GoogleFonts.poppins(
                           fontSize: 13,
-                          color: complaint['statusColor'],
+                          color: statusColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -321,7 +373,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        complaint['location'],
+                        complaint['location'] ?? 'No location',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           color: Colors.grey[700],
@@ -337,7 +389,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                         color: Colors.grey, size: 14),
                     const SizedBox(width: 6),
                     Text(
-                      complaint['date'],
+                      _formatDate(complaint['createdAt']),
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         color: Colors.grey[600],
@@ -349,13 +401,14 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
             ),
           ),
 
-          if (complaint['images'].isNotEmpty)
+          // 🔥 Image from Cloudinary
+          if (firstImage.isNotEmpty)
             Container(
               height: 150,
               width: double.infinity,
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: NetworkImage(complaint['images'][0]),
+                  image: NetworkImage(firstImage),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -448,7 +501,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                           icon: const Icon(Icons.delete_outline, 
                               color: Colors.red),
                           onPressed: () {
-                            _deleteComplaint(complaint);
+                            _deleteComplaint(complaint['id'], complaint['categoryName'] ?? 'Complaint');
                           },
                         ),
                       ),
@@ -461,48 +514,25 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
       ),
     );
   }
-
-  Future<void> _deleteComplaint(Map<String, dynamic> complaint) async {
-    showDialog(
-      context: context,
-      builder: (context) => DeleteConfirmationDialog(
-        complaintTitle: complaint['category'],
-        onConfirm: () {
-          setState(() {
-            _userComplaints.removeWhere((item) => item['id'] == complaint['id']);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${complaint['category']} deleted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context);
-        },
-      ),
-    );
-  }
 }
 
-// Navigation function (same for all screens)
 void _handleNavigation(int index, BuildContext context) {
   switch (index) {
-    case 0: // Home
+    case 0:
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DashboardScreen()),
       );
       break;
-    case 1: // Submit
+    case 1:
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const SubmitScreen()),
       );
       break;
-    case 2: // My Complaints
-      // Already here
+    case 2:
       break;
-    case 3: // Profile
+    case 3:
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ProfileScreen()),

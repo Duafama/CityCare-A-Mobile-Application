@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EditComplaintScreen extends StatefulWidget {
   final Map<String, dynamic> complaint;
@@ -15,6 +17,7 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
   late TextEditingController _locationController;
   late String _selectedCategory;
   List<String> _selectedImages = [];
+  bool _isSaving = false;
 
   final List<String> _categories = [
     'Broken Streetlight',
@@ -31,10 +34,20 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
   @override
   void initState() {
     super.initState();
-    _descriptionController = TextEditingController(text: widget.complaint['description']);
-    _locationController = TextEditingController(text: widget.complaint['location']);
-    _selectedCategory = widget.complaint['category'];
-    _selectedImages = List.from(widget.complaint['images']);
+    
+    // 🔥 FIX: Use correct field names from Firestore
+    _descriptionController = TextEditingController(
+      text: widget.complaint['description'] ?? ''
+    );
+    _locationController = TextEditingController(
+      text: widget.complaint['location'] ?? ''
+    );
+    // 🔥 FIX: Use 'categoryName' instead of 'category'
+    _selectedCategory = widget.complaint['categoryName'] ?? widget.complaint['category'] ?? 'Other';
+    // 🔥 FIX: Use 'beforeImages' instead of 'images'
+    _selectedImages = List<String>.from(
+      widget.complaint['beforeImages'] ?? widget.complaint['images'] ?? []
+    );
   }
 
   @override
@@ -42,6 +55,90 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
     _descriptionController.dispose();
     _locationController.dispose();
     super.dispose();
+  }
+
+  // 🔥 Save changes to Firestore
+  Future<void> _saveChanges() async {
+    if (_descriptionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a description'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    if (_locationController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a location'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    setState(() => _isSaving = true);
+    
+    try {
+      String complaintId = widget.complaint['complaintId'] ?? widget.complaint['id'];
+      
+      await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(complaintId)
+          .update({
+        'description': _descriptionController.text.trim(),
+        'location': _locationController.text.trim(),
+        'categoryName': _selectedCategory,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Complaint updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate update
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  void _addImage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Upload feature coming soon!'),
+        backgroundColor: Color(0xFF4A6FFF),
+      ),
+    );
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Image removed! (Save to update)'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 
   @override
@@ -66,8 +163,17 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save, color: Colors.white),
-            onPressed: _saveChanges,
+            onPressed: _isSaving ? null : _saveChanges,
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.save, color: Colors.white),
           ),
         ],
       ),
@@ -225,7 +331,7 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Update Images',
+                    'Complaint Images',
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -234,46 +340,6 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
                   ),
                   const SizedBox(height: 15),
 
-                  // Add Image Button
-                  Container(
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F2F5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF4A6FFF),
-                        width: 2,
-                        // style: BorderStyle.dashed,
-                      ),
-                    ),
-                    child: InkWell(
-                      onTap: _addImage,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.add_photo_alternate_outlined,
-                            size: 40,
-                            color: Color(0xFF4A6FFF),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Add More Images',
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              color: const Color(0xFF4A6FFF),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Current Images
                   if (_selectedImages.isNotEmpty) ...[
                     Text(
                       'Current Images (${_selectedImages.length}):',
@@ -329,6 +395,23 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
                         );
                       },
                     ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F2F5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'No images attached',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -354,7 +437,7 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
                 ],
               ),
               child: ElevatedButton(
-                onPressed: _saveChanges,
+                onPressed: _isSaving ? null : _saveChanges,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   foregroundColor: Colors.white,
@@ -363,20 +446,29 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.save_outlined, size: 22),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Save Changes',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.save_outlined, size: 22),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Save Changes',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ],
@@ -394,68 +486,5 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
         color: const Color(0xFF0F1A3D),
       ),
     );
-  }
-
-  void _addImage() {
-    // Add demo image
-    setState(() {
-      _selectedImages.add(
-        'https://images.unsplash.com/photo-1577720580479-7d839d829c73?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      );
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Image added successfully!'),
-        backgroundColor: Color(0xFF4A6FFF),
-      ),
-    );
-  }
-
-  void _removeImage(int index) {
-    setState(() {
-      _selectedImages.removeAt(index);
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Image removed!'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _saveChanges() {
-    if (_descriptionController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a description'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    
-    if (_locationController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a location'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ Complaint updated successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-    
-    // Navigate back after a delay
-    Future.delayed(const Duration(seconds: 1), () {
-      Navigator.pop(context);
-    });
   }
 }

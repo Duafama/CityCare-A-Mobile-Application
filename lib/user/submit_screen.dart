@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:city_care/services/cloudinary_service.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'my_complaints_screen.dart';
 import 'profile.dart';
 import 'dashboard_screen.dart';
-class SubmitScreen extends StatelessWidget {
+// import 'package:city_care/services/geocoding_service.dart';
+
+class SubmitScreen extends StatefulWidget {
   const SubmitScreen({super.key});
+
+  @override
+  State<SubmitScreen> createState() => _SubmitScreenState();
+}
+
+class _SubmitScreenState extends State<SubmitScreen> {
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +46,8 @@ class SubmitScreen extends StatelessWidget {
       ),
       body: const SubmitContent(),
       
-      // SAME navigation as dashboard
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1, // Always show Submit selected
+        currentIndex: 1,
         onTap: (index) {
           _handleNavigation(index, context);
         },
@@ -74,29 +88,123 @@ class SubmitContent extends StatefulWidget {
 }
 
 class _SubmitContentState extends State<SubmitContent> {
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+  
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
 
   String _selectedCategory = 'Select a Category';
-  final List<String> _selectedImagePaths = [];
-  bool _showMapPlaceholder = false;
+  String? _selectedCategoryId;
+  final List<String> _selectedImageUrls = [];
   bool _isPickingImage = false;
+  bool _isSubmitting = false;
 
-  final List<String> _categories = [
-    'Select a Category',
-    'Broken Streetlight',
-    'Water Leakage',
-    'Garbage Pile Up',
-    'Potholes',
-    'Drainage Issue',
-    'Road Damage',
-    'Public Park Issue',
-    'Street Cleaning',
-    'Other'
-  ];
+  // 🔥 Map variables
+  GoogleMapController? _mapController;
+  LatLng? _selectedLocation;
+  bool _isLoadingLocation = false;
+  Set<Marker> _markers = {};
+
+  // 🔥 Categories from Firestore
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoadingCategories = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+    _checkLocationPermission();
+  }
+
+  // 🔥 Check location permission
+  Future<void> _checkLocationPermission() async {
+    setState(() => _isLoadingLocation = true);
+    
+    var status = await Permission.location.status;
+    if (status.isDenied) {
+      status = await Permission.location.request();
+    }
+    
+    if (status.isGranted) {
+      _getCurrentLocation();
+    } else {
+      setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  // 🔥 Get current location
+  Future<void> _getCurrentLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      
+      setState(() {
+        _selectedLocation = LatLng(position.latitude, position.longitude);
+        _locationController.text = 
+            'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
+        _updateMarker();
+        _isLoadingLocation = false;
+      });
+      
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: _selectedLocation!,
+              zoom: 15.0,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+      setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  // 🔥 Update marker on map
+  void _updateMarker() {
+    if (_selectedLocation != null) {
+      _markers.clear();
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('selected_location'),
+          position: _selectedLocation!,
+          infoWindow: const InfoWindow(title: 'Complaint Location'),
+        ),
+      );
+    }
+  }
+
+  // 🔥 Load categories from Firestore
+  Future<void> _loadCategories() async {
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('categories')
+          .orderBy('name')
+          .get();
+      
+      setState(() {
+        _categories = snapshot.docs.map((doc) {
+          return {
+            'id': doc.id,
+            'name': doc['name'],
+          };
+        }).toList();
+        _isLoadingCategories = false;
+      });
+    } catch (e) {
+      print('Error loading categories: $e');
+      setState(() {
+        _isLoadingCategories = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _mapController?.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
     super.dispose();
@@ -120,37 +228,80 @@ class _SubmitContentState extends State<SubmitContent> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey[300]!),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedCategory,
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down,
-                          color: Color(0xFF4A6FFF)),
-                      items: _categories.map((String category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              category,
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                color: category == 'Select a Category'
-                                    ? Colors.grey[500]
-                                    : const Color(0xFF0F1A3D),
-                              ),
+                  child: _isLoadingCategories
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF4A6FFF),
                             ),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedCategory = newValue!;
-                        });
-                      },
-                    ),
-                  ),
+                        )
+                      : DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedCategory,
+                            isExpanded: true,
+                            icon: const Icon(Icons.arrow_drop_down,
+                                color: Color(0xFF4A6FFF)),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: 'Select a Category',
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(
+                                    'Select a Category',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              ..._categories.map((category) {
+                                return DropdownMenuItem<String>(
+                                  value: category['name'],
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text(
+                                      category['name'],
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 15,
+                                        color: const Color(0xFF0F1A3D),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                              const DropdownMenuItem<String>(
+                                value: 'Other',
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(
+                                    'Other',
+                                    style: TextStyle(
+                                      color: Color(0xFF4A6FFF),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedCategory = newValue!;
+                                if (newValue != 'Select a Category' && newValue != 'Other') {
+                                  final selectedCat = _categories.firstWhere(
+                                    (cat) => cat['name'] == newValue,
+                                    orElse: () => {},
+                                  );
+                                  _selectedCategoryId = selectedCat['id'];
+                                } else {
+                                  _selectedCategoryId = null;
+                                }
+                              });
+                            },
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 20),
 
@@ -218,54 +369,20 @@ class _SubmitContentState extends State<SubmitContent> {
                         padding: const EdgeInsets.only(right: 8),
                         child: IconButton(
                           icon: const Icon(
-                            Icons.location_on,
+                            Icons.my_location,
                             color: Color(0xFF4A6FFF),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _locationController.text =
-                                  '123 Civil Lines, Gujranwala';
-                              _showMapPlaceholder = true;
-                            });
-                            _showSnackBar('Location added!', context);
-                          },
+                          onPressed: _isLoadingLocation ? null : _getCurrentLocation,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _locationController.text =
-                          'Current Location: Gujranwala, Pakistan';
-                      _showMapPlaceholder = true;
-                    });
-                    _showSnackBar('Using your current location!', context);
-                  },
-                  child: Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined,
-                          color: Color(0xFF4A6FFF), size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        '📍 Use my location',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: const Color(0xFF4A6FFF),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: 16),
 
-                if (_showMapPlaceholder) ...[
-                  const SizedBox(height: 16),
-                  _buildStaticMapUI(),
-                ],
-
+                // 🔥 REAL GOOGLE MAP - REPLACES STATIC MAP
+                _buildMapSection(),
+                
                 const SizedBox(height: 20),
 
                 _buildSectionTitle('Attach Images:'),
@@ -273,15 +390,15 @@ class _SubmitContentState extends State<SubmitContent> {
                 _buildImagePickerSection(),
                 const SizedBox(height: 20),
 
+                // 🔍 AI Duplication Detection - TO BE IMPLEMENTED
+                // ⚡ AI Priority Suggestion - TO BE IMPLEMENTED
+
                 Container(
                   width: double.infinity,
                   height: 50,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4A6FFF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  margin: const EdgeInsets.only(bottom: 16),
                   child: ElevatedButton(
-                    onPressed: _submitComplaint,
+                    onPressed: _isSubmitting ? null : _submitComplaint,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4A6FFF),
                       foregroundColor: Colors.white,
@@ -290,13 +407,22 @@ class _SubmitContentState extends State<SubmitContent> {
                       ),
                       elevation: 0,
                     ),
-                    child: Text(
-                      'Submit Complaint',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                        : Text(
+                            'Submit Complaint',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -318,197 +444,91 @@ class _SubmitContentState extends State<SubmitContent> {
     );
   }
 
-  Widget _buildStaticMapUI() {
+  // 🔥 REAL GOOGLE MAP WIDGET
+  Widget _buildMapSection() {
     return Container(
-      height: 220,
+      height: 250,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            spreadRadius: 1,
-          ),
-        ],
+        border: Border.all(color: Colors.grey[300]!),
       ),
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: const Color(0xFFE8F5E9),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: const CameraPosition(
+                target: LatLng(31.5204, 74.3587),
+                zoom: 12,
+              ),
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+                if (_selectedLocation != null) {
+                  controller.animateCamera(
+                    CameraUpdate.newCameraPosition(
+                      CameraPosition(
+                        target: _selectedLocation!,
+                        zoom: 15,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: Colors.grey, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Gujranwala, Pakistan',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Expanded(
-                  child: Stack(
-                    children: [
-                      CustomPaint(
-                        painter: MapPainter(),
-                      ),
-
-                      Positioned(
-                        top: 60,
-                        left: MediaQuery.of(context).size.width / 2 - 15,
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0F1A3D),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '📍',
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ),
-                            Container(
-                              height: 30,
-                              width: 2,
-                              color: const Color(0xFF0F1A3D),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.explore,
-                            color: Color(0xFF4A6FFF),
-                            size: 20,
-                          ),
-                        ),
-                      ),
-
-                      Positioned(
-                        bottom: 10,
-                        right: 10,
-                        child: Column(
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                color: Color(0xFF0F1A3D),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.remove,
-                                color: Color(0xFF0F1A3D),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  );
+                }
+              },
+              markers: _markers,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: true,
+              mapType: MapType.normal,
+              onTap: (LatLng latLng) {
+                setState(() {
+                  _selectedLocation = latLng;
+                  _locationController.text = 
+                      'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
+                  _updateMarker();
+                });
+              },
             ),
-          ),
-
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Center(
+            
+            if (_isLoadingLocation)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            
+            Positioned(
+              top: 10,
+              left: 10,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
+                      blurRadius: 4,
                     ),
                   ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: Color(0xFF4A6FFF),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
+                    const Icon(Icons.touch_app, color: Color(0xFF4A6FFF), size: 16),
+                    const SizedBox(width: 4),
                     Text(
-                      'Tap and drag to move map',
+                      'Tap on map to select location',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: Colors.grey[700],
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -565,10 +585,10 @@ class _SubmitContentState extends State<SubmitContent> {
           ),
         ),
 
-        if (_selectedImagePaths.isNotEmpty) ...[
+        if (_selectedImageUrls.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
-            'Selected Images (${_selectedImagePaths.length}):',
+            'Selected Images (${_selectedImageUrls.length}):',
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -580,7 +600,7 @@ class _SubmitContentState extends State<SubmitContent> {
             height: 100,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: _selectedImagePaths.length,
+              itemCount: _selectedImageUrls.length,
               itemBuilder: (context, index) {
                 return Stack(
                   children: [
@@ -592,7 +612,7 @@ class _SubmitContentState extends State<SubmitContent> {
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(8),
                         image: DecorationImage(
-                          image: NetworkImage(_selectedImagePaths[index]),
+                          image: NetworkImage(_selectedImageUrls[index]),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -633,23 +653,18 @@ class _SubmitContentState extends State<SubmitContent> {
       _isPickingImage = true;
     });
 
-    await Future.delayed(const Duration(milliseconds: 500));
-
     try {
-      final demoImages = [
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-        'https://images.unsplash.com/photo-1518495978945-83d413a61108?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-        'https://images.unsplash.com/photo-1558640476-437a2e9b7a2f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ];
-
-      setState(() {
-        _selectedImagePaths.addAll(demoImages);
-      });
-
-      _showSnackBar('${demoImages.length} images added successfully!', context);
+      final imageUrl = await CloudinaryService.pickAndUploadImage();
+      
+      if (imageUrl != null && mounted) {
+        setState(() {
+          _selectedImageUrls.add(imageUrl);
+        });
+        _showSnackBar('Image uploaded successfully!', context);
+      }
     } catch (e) {
       print('Error: $e');
-      _showSnackBar('Error adding images', context);
+      _showSnackBar('Error uploading image', context);
     } finally {
       setState(() {
         _isPickingImage = false;
@@ -659,12 +674,12 @@ class _SubmitContentState extends State<SubmitContent> {
 
   void _removeImage(int index) {
     setState(() {
-      _selectedImagePaths.removeAt(index);
+      _selectedImageUrls.removeAt(index);
     });
     _showSnackBar('Image removed!', context);
   }
 
-  void _submitComplaint() {
+  Future<void> _submitComplaint() async {
     if (_selectedCategory == 'Select a Category') {
       _showSnackBar('Please select a category', context);
       return;
@@ -675,22 +690,71 @@ class _SubmitContentState extends State<SubmitContent> {
       return;
     }
 
-    if (_locationController.text.isEmpty) {
-      _showSnackBar('Please provide a location', context);
+    if (_selectedLocation == null) {
+      _showSnackBar('Please select a location on map', context);
       return;
     }
 
-    _showSnackBar('✅ Complaint submitted successfully!', context);
+    if (_currentUser == null) {
+      _showSnackBar('You must be logged in to submit a complaint', context);
+      return;
+    }
 
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() {
-        _selectedCategory = 'Select a Category';
-        _descriptionController.clear();
-        _locationController.clear();
-        _selectedImagePaths.clear();
-        _showMapPlaceholder = false;
+    setState(() => _isSubmitting = true);
+
+    try {
+      String complaintId = FirebaseFirestore.instance
+          .collection('complaints')
+          .doc()
+          .id;
+
+      String suggestedPriority = 'Medium';
+
+      await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(complaintId)
+          .set({
+        'complaintId': complaintId,
+        'description': _descriptionController.text.trim(),
+        'location': _locationController.text.trim(),
+        'latitude': _selectedLocation!.latitude,
+        'longitude': _selectedLocation!.longitude,
+        'beforeImages': _selectedImageUrls,
+        'afterImages': [],
+        'status': 'Pending',
+        'priority': suggestedPriority,
+        'createdAt': FieldValue.serverTimestamp(),
+        'citizenId': _currentUser!.uid,
+        'citizenEmail': _currentUser!.email,
+        'categoryId': _selectedCategoryId ?? '',
+        'categoryName': _selectedCategory == 'Other' ? 'Other' : _selectedCategory,
+        'departmentId': '',
+        'upvoteCount': 0,
+        'commentCount': 0,
       });
-    });
+
+      _showSnackBar('✅ Complaint submitted successfully!', context);
+
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _selectedCategory = 'Select a Category';
+            _selectedCategoryId = null;
+            _descriptionController.clear();
+            _locationController.clear();
+            _selectedLocation = null;
+            _markers.clear();
+            _selectedImageUrls.clear();
+            _isSubmitting = false;
+          });
+        }
+      });
+
+    } catch (e) {
+      print('Error submitting complaint: $e');
+      _showSnackBar('Error submitting complaint: ${e.toString()}', context);
+      setState(() => _isSubmitting = false);
+    }
   }
 
   void _showSnackBar(String message, BuildContext context) {
@@ -703,92 +767,27 @@ class _SubmitContentState extends State<SubmitContent> {
   }
 }
 
-// Navigation function (same for all screens)
 void _handleNavigation(int index, BuildContext context) {
   switch (index) {
-    case 0: // Home
+    case 0:
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const DashboardScreen()),
       );
       break;
-    case 1: // Submit
-      // Already here
+    case 1:
       break;
-    case 2: // My Complaints
+    case 2:
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MyComplaintsScreen()),
       );
       break;
-    case 3: // Profile
+    case 3:
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ProfileScreen()),
       );
       break;
   }
-}
-
-class MapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey[400]!
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(
-      Offset(size.width * 0.2, size.height * 0.3),
-      Offset(size.width * 0.8, size.height * 0.3),
-      paint,
-    );
-
-    canvas.drawLine(
-      Offset(size.width * 0.4, size.height * 0.1),
-      Offset(size.width * 0.4, size.height * 0.7),
-      paint,
-    );
-
-    canvas.drawLine(
-      Offset(size.width * 0.6, size.height * 0.2),
-      Offset(size.width * 0.9, size.height * 0.6),
-      paint,
-    );
-
-    final buildingPaint = Paint()
-      ..color = Colors.grey[300]!
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(
-      Rect.fromPoints(
-        Offset(size.width * 0.2, size.height * 0.4),
-        Offset(size.width * 0.3, size.height * 0.6),
-      ),
-      buildingPaint,
-    );
-
-    canvas.drawRect(
-      Rect.fromPoints(
-        Offset(size.width * 0.5, size.height * 0.5),
-        Offset(size.width * 0.7, size.height * 0.7),
-      ),
-      buildingPaint,
-    );
-
-    final parkPaint = Paint()
-      ..color = const Color(0xFFC8E6C9)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(
-      Rect.fromPoints(
-        Offset(size.width * 0.1, size.height * 0.6),
-        Offset(size.width * 0.4, size.height * 0.8),
-      ),
-      parkPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
