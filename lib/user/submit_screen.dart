@@ -10,6 +10,7 @@ import 'my_complaints_screen.dart';
 import 'profile.dart';
 import 'dashboard_screen.dart';
 // import 'package:city_care/services/geocoding_service.dart';
+import 'package:geocoding/geocoding.dart';  // Top par import ka
 
 class SubmitScreen extends StatefulWidget {
   const SubmitScreen({super.key});
@@ -134,35 +135,95 @@ class _SubmitContentState extends State<SubmitContent> {
 
   // 🔥 Get current location
   Future<void> _getCurrentLocation() async {
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      
-      setState(() {
-        _selectedLocation = LatLng(position.latitude, position.longitude);
-        _locationController.text = 
-            'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
-        _updateMarker();
-        _isLoadingLocation = false;
-      });
-      
-      if (_mapController != null) {
-        _mapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: _selectedLocation!,
-              zoom: 15.0,
-            ),
+  try {
+    setState(() => _isLoadingLocation = true);
+    
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    
+    final latLng = LatLng(position.latitude, position.longitude);
+    
+    setState(() {
+      _selectedLocation = latLng;
+      _updateMarker();
+      _locationController.text = 'Getting address...';  // Loading message
+    });
+    
+    // 🔥 Get address from coordinates (FREE)
+    final address = await _getAddressFromLatLng(latLng);
+    
+    setState(() {
+      _locationController.text = address;
+      _isLoadingLocation = false;
+    });
+    
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: _selectedLocation!,
+            zoom: 15.0,
           ),
-        );
-      }
-    } catch (e) {
-      print('Error getting location: $e');
-      setState(() => _isLoadingLocation = false);
+        ),
+      );
     }
+  } catch (e) {
+    print('Error getting location: $e');
+    setState(() => _isLoadingLocation = false);
+    _showSnackBar('Error getting location', context);
   }
-
+}
+Future<String> _getAddressFromLatLng(LatLng latLng) async {
+  try {
+    // Convert coordinates to placemark
+    List<Placemark> placemarks = await placemarkFromCoordinates(
+      latLng.latitude, 
+      latLng.longitude,
+    );
+    
+    if (placemarks.isNotEmpty) {
+      Placemark place = placemarks[0];
+      
+      // Priority order for Pakistan addresses
+      String address = '';
+      
+      // Try to get area name first
+      if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+        address = place.subLocality!;  // e.g., "Model Town"
+      }
+      // Then try locality
+      else if (place.locality != null && place.locality!.isNotEmpty) {
+        address = place.locality!;  // e.g., "Lahore"
+      }
+      // Then try sub-administrative area
+      else if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
+        address = place.subAdministrativeArea!;
+      }
+      // Finally use street or name
+      else if (place.name != null && place.name!.isNotEmpty) {
+        address = place.name!;
+      }
+      else {
+        address = '${place.street}, ${place.locality}';
+      }
+      
+      // Agar address empty hai to coordinates show karein
+      if (address.isEmpty) {
+        address = 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
+      }
+      
+      return address;
+    }
+    
+    return 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
+    
+  } catch (e) {
+    print('Geocoding error: $e');
+    return 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
+  }
+}
+//
   // 🔥 Update marker on map
   void _updateMarker() {
     if (_selectedLocation != null) {
@@ -478,14 +539,20 @@ class _SubmitContentState extends State<SubmitContent> {
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
               mapType: MapType.normal,
-              onTap: (LatLng latLng) {
-                setState(() {
-                  _selectedLocation = latLng;
-                  _locationController.text = 
-                      'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
-                  _updateMarker();
-                });
-              },
+              onTap: (LatLng latLng) async {  // 👈 "async" add kiya
+  setState(() {
+    _selectedLocation = latLng;
+    _locationController.text = 'Getting address...';  // Loading message
+    _updateMarker();
+  });
+  
+  // Address fetch karein
+  final address = await _getAddressFromLatLng(latLng);
+  
+  setState(() {
+    _locationController.text = address;
+  });
+},
             ),
             
             if (_isLoadingLocation)

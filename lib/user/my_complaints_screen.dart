@@ -9,6 +9,87 @@ import 'submit_screen.dart';
 import 'profile.dart';
 import 'dashboard_screen.dart';
 
+// 🔥ADD ENUMS 
+enum ComplaintStatus {
+  pending,
+  approved,
+  inProgress,
+  resolved,
+}
+
+enum FilterOption {
+  all,
+  pending,
+  approved,
+  inProgress,
+  resolved,
+}
+
+// 🔥 Extension for converting enum to string and vice versa
+extension ComplaintStatusExtension on ComplaintStatus {
+  String get value {
+    switch (this) {
+      case ComplaintStatus.pending:
+        return 'Pending';
+      case ComplaintStatus.approved:
+        return 'Approved';
+      case ComplaintStatus.inProgress:
+        return 'In-Progress';
+      case ComplaintStatus.resolved:
+        return 'Resolved';
+    }
+  }
+
+  static ComplaintStatus fromString(String status) {
+    switch (status) {
+      case 'Pending':
+        return ComplaintStatus.pending;
+      case 'Approved':
+        return ComplaintStatus.approved;
+      case 'In-Progress':
+        return ComplaintStatus.inProgress;
+      case 'Resolved':
+        return ComplaintStatus.resolved;
+      default:
+        return ComplaintStatus.pending;
+    }
+  }
+}
+
+extension FilterOptionExtension on FilterOption {
+  String get value {
+    switch (this) {
+      case FilterOption.all:
+        return 'All';
+      case FilterOption.pending:
+        return 'Pending';
+      case FilterOption.approved:
+        return 'Approved';
+      case FilterOption.inProgress:
+        return 'In-Progress';
+      case FilterOption.resolved:
+        return 'Resolved';
+    }
+  }
+
+  static FilterOption fromString(String filter) {
+    switch (filter) {
+      case 'All':
+        return FilterOption.all;
+      case 'Pending':
+        return FilterOption.pending;
+      case 'Approved':
+        return FilterOption.approved;
+      case 'In-Progress':
+        return FilterOption.inProgress;
+      case 'Resolved':
+        return FilterOption.resolved;
+      default:
+        return FilterOption.all;
+    }
+  }
+}
+
 class MyComplaintsScreen extends StatelessWidget {
   const MyComplaintsScreen({super.key});
 
@@ -78,23 +159,24 @@ class MyComplaintsContent extends StatefulWidget {
 
 class _MyComplaintsContentState extends State<MyComplaintsContent> {
   final User? _currentUser = FirebaseAuth.instance.currentUser;
-  String _selectedFilter = 'All';
+  
+  // 🔥 Enum use kiya (String ki jagah)
+  FilterOption _selectedFilter = FilterOption.all;
 
-  final List<String> _filters = ['All', 'Pending', 'Approved', 'In-Progress', 'Resolved'];
+  // 🔥 Filters list ab enum se generate ho rahi hai
+  List<FilterOption> get _filters => FilterOption.values;
 
-  // 🔥 Helper function to get status color
-  Color _getStatusColor(String status) {
+  // 🔥 Helper function to get status color using enum
+  Color _getStatusColor(ComplaintStatus status) {
     switch (status) {
-      case 'Pending':
+      case ComplaintStatus.pending:
         return Colors.orange;
-      case 'Approved':
+      case ComplaintStatus.approved:
         return Colors.green;
-      case 'In-Progress':
+      case ComplaintStatus.inProgress:
         return Colors.blue;
-      case 'Resolved':
+      case ComplaintStatus.resolved:
         return Colors.teal;
-      default:
-        return Colors.grey;
     }
   }
 
@@ -182,7 +264,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                         label: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                           child: Text(
-                            filter,
+                            filter.value, // 🔥 Enum ki value use ki
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               color: isSelected ? Colors.white : const Color(0xFF0F1A3D),
@@ -199,7 +281,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                         ),
                         onSelected: (selected) {
                           setState(() {
-                            _selectedFilter = filter;
+                            _selectedFilter = filter; // 🔥 Enum assign kiya
                           });
                         },
                       ),
@@ -269,16 +351,18 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                 );
               }
 
-              // Filter complaints based on selected filter
+              // 🔥 Filter complaints based on selected filter (Enum use kiya)
               var complaints = snapshot.data!.docs.where((doc) {
-                if (_selectedFilter == 'All') return true;
-                return doc['status'] == _selectedFilter;
+                if (_selectedFilter == FilterOption.all) return true;
+                String statusString = doc['status'] ?? 'Pending';
+                ComplaintStatus status = ComplaintStatusExtension.fromString(statusString);
+                return status == _selectedFilter; // 🔥 Enum comparison
               }).toList();
 
               if (complaints.isEmpty) {
                 return Center(
                   child: Text(
-                    'No $_selectedFilter complaints found',
+                    'No ${_selectedFilter.value} complaints found', // 🔥 Enum ki value use ki
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: Colors.grey[600],
@@ -306,8 +390,10 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
   }
 
   Widget _buildComplaintCard(Map<String, dynamic> complaint) {
-    String status = complaint['status'] ?? 'Pending';
-    bool isPending = status == 'Pending';
+    // 🔥 Enum use kiya status ke liye
+    String statusString = complaint['status'] ?? 'Pending';
+    ComplaintStatus status = ComplaintStatusExtension.fromString(statusString);
+    bool isPending = status == ComplaintStatus.pending; // 🔥 Enum comparison
     Color statusColor = _getStatusColor(status);
     String firstImage = complaint['beforeImages'] != null && complaint['beforeImages'].isNotEmpty
         ? complaint['beforeImages'][0]
@@ -355,7 +441,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        status,
+                        status.value, // 🔥 Enum ki value use ki
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: statusColor,
