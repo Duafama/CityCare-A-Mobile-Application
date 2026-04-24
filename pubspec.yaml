@@ -10,7 +10,7 @@ dependencies:
   google_maps_flutter: ^2.3.0
   geolocator: ^10.1.0
   permission_handler: ^11.0.1
-  geocoding: ^2.1.1  # 👈 YEH ADD KAREIN
+  geocoding: ^2.2.1  # 👈 YEH ADD KAREIN
   http: ^1.1.0
   flutter:
   
@@ -20,7 +20,7 @@ dependencies:
     sdk: flutter
     
   cupertino_icons: ^1.0.8
-  google_fonts: ^5.0.0
+  google_fonts: ^6.2.1
 
    
 
@@ -34,8 +34,8 @@ dependencies:
   cloud_firestore: ^4.17.0
   # Stripe Payment Packages
   flutter_stripe: ^12.0.2    # Stripe SDK
-  http: ^1.1.0                # For API calls
-  # google_fonts: ^6.1.0
+  
+  
   
   # Optional but recommended
   flutter_dotenv: ^5.1.0  
