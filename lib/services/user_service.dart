@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 👈 ADD THIS
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:city_care/services/user_service.dart';
 import 'package:city_care/services/cloudinary_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,7 +22,8 @@ class UserService {
     required String phone,
     required String paymentMethod,
     required double registrationFee,
-     String? profileImageUrl,  // 👈 SIRF YEH LINE ADD KARO
+     String? profileImageUrl,  // 
+      String? departmentId,  // 🔥 NEW: Department ID (null for citizens)
   }) async {
     try {
       // Create user document in 'users' collection
@@ -33,12 +34,13 @@ class UserService {
         'phone': phone,
         'paymentMethod': paymentMethod,
         'registrationFee': registrationFee,
-        'userType': 'citizen', // default user type
+        'userType': departmentId == null ? 'citizen' : 'department_officer', // 🔥 Auto-detect
+        'departmentId': departmentId, // 🔥 NEW: null for citizens, ID for officers
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'lastLogin': FieldValue.serverTimestamp(),
-         'profileImageUrl': profileImageUrl ?? '', // 👈 YEH BHI ADD KARO
+         'profileImageUrl': profileImageUrl ?? '', 
       });
 
       // Also create a payment record
@@ -98,6 +100,7 @@ Future<String?> updateProfileImage(String uid, String imageUrl) async {
 }
 // Update user profile
 Future<String?> updateUserProfile(String uid, Map<String, dynamic> updates) async {
+
   try {
     await _firestore.collection('users').doc(uid).update(updates);
     return null;
@@ -105,4 +108,51 @@ Future<String?> updateUserProfile(String uid, Map<String, dynamic> updates) asyn
     return 'Error updating profile: $e';
   }
 }
+// 🔥 NEW: Update user type (citizen to department officer)
+  Future<String?> updateUserType(String uid, String userType, {String? departmentId}) async {
+    try {
+      Map<String, dynamic> updates = {
+        'userType': userType,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      
+      if (departmentId != null) {
+        updates['departmentId'] = departmentId;
+      } else if (userType == 'citizen') {
+        updates['departmentId'] = null; // Citizens ka departmentId null
+      }
+      
+      await _firestore.collection('users').doc(uid).update(updates);
+      return null;
+    } catch (e) {
+      return 'Error updating user type: $e';
+    }
+  }
+
+  // 🔥 NEW: Check if user is department officer
+  Future<bool> isDepartmentOfficer(String uid) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        String userType = doc.get('userType') ?? 'citizen';
+        return userType == 'department_officer';
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 🔥 NEW: Get department ID of user
+  Future<String?> getDepartmentId(String uid) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        return doc.get('departmentId');
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 }

@@ -4,18 +4,18 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 class CloudinaryService {
-  // 🔑 APNI VALUES YAHAN DALO (Cloudinary dashboard se)
-  static const String cloudName = "dkrqwud4r";  // 👈 Apna cloud name
-  static const String uploadPreset = "city_care_preset"; // 👈 Upload preset name
+ 
+  static const String cloudName = "dkrqwud4r";  
+  static const String uploadPreset = "city_care_preset"; 
 
   // 🖼️ Image picker function
   static Future<File?> pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 500,  // Chhoti image, fast upload
+      maxWidth: 500,  
       maxHeight: 500,
-      imageQuality: 80, // Quality thodi kam, but fast
+      imageQuality: 80, 
     );
 
     if (pickedFile != null) {
@@ -24,7 +24,7 @@ class CloudinaryService {
     return null;
   }
 
-  // ☁️ Cloudinary par upload karo
+  // ☁️Upload on Cloudinary 
   static Future<String?> uploadImage(File imageFile) async {
     try {
       print('📤 Uploading to Cloudinary...');
@@ -34,14 +34,14 @@ class CloudinaryService {
         'https://api.cloudinary.com/v1_1/$cloudName/image/upload'
       );
 
-      // Multipart request banao
+      // Multipart request 
       var request = http.MultipartRequest('POST', url)
         ..fields['upload_preset'] = uploadPreset
         ..files.add(
           await http.MultipartFile.fromPath('file', imageFile.path)
         );
 
-      // Request send karo
+      //send  Request 
       var response = await request.send();
 
       if (response.statusCode == 200) {

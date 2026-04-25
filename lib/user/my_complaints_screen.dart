@@ -9,86 +9,8 @@ import 'submit_screen.dart';
 import 'profile.dart';
 import 'dashboard_screen.dart';
 
-// 🔥ADD ENUMS 
-enum ComplaintStatus {
-  pending,
-  approved,
-  inProgress,
-  resolved,
-}
-
-enum FilterOption {
-  all,
-  pending,
-  approved,
-  inProgress,
-  resolved,
-}
-
-// 🔥 Extension for converting enum to string and vice versa
-extension ComplaintStatusExtension on ComplaintStatus {
-  String get value {
-    switch (this) {
-      case ComplaintStatus.pending:
-        return 'Pending';
-      case ComplaintStatus.approved:
-        return 'Approved';
-      case ComplaintStatus.inProgress:
-        return 'In-Progress';
-      case ComplaintStatus.resolved:
-        return 'Resolved';
-    }
-  }
-
-  static ComplaintStatus fromString(String status) {
-    switch (status) {
-      case 'Pending':
-        return ComplaintStatus.pending;
-      case 'Approved':
-        return ComplaintStatus.approved;
-      case 'In-Progress':
-        return ComplaintStatus.inProgress;
-      case 'Resolved':
-        return ComplaintStatus.resolved;
-      default:
-        return ComplaintStatus.pending;
-    }
-  }
-}
-
-extension FilterOptionExtension on FilterOption {
-  String get value {
-    switch (this) {
-      case FilterOption.all:
-        return 'All';
-      case FilterOption.pending:
-        return 'Pending';
-      case FilterOption.approved:
-        return 'Approved';
-      case FilterOption.inProgress:
-        return 'In-Progress';
-      case FilterOption.resolved:
-        return 'Resolved';
-    }
-  }
-
-  static FilterOption fromString(String filter) {
-    switch (filter) {
-      case 'All':
-        return FilterOption.all;
-      case 'Pending':
-        return FilterOption.pending;
-      case 'Approved':
-        return FilterOption.approved;
-      case 'In-Progress':
-        return FilterOption.inProgress;
-      case 'Resolved':
-        return FilterOption.resolved;
-      default:
-        return FilterOption.all;
-    }
-  }
-}
+// 🔥 IMPORT ENUMS FROM MODELS FOLDER
+import '../models/complaint_enums.dart';  // 👈 Yahan se import kar rahe hain
 
 class MyComplaintsScreen extends StatelessWidget {
   const MyComplaintsScreen({super.key});
@@ -160,11 +82,11 @@ class MyComplaintsContent extends StatefulWidget {
 class _MyComplaintsContentState extends State<MyComplaintsContent> {
   final User? _currentUser = FirebaseAuth.instance.currentUser;
   
-  // 🔥 Enum use kiya (String ki jagah)
-  FilterOption _selectedFilter = FilterOption.all;
+  // 🔥 Ab sirf ComplaintStatus enum use ho raha hai (null = All)
+  ComplaintStatus? _selectedFilter; // null means "All"
 
-  // 🔥 Filters list ab enum se generate ho rahi hai
-  List<FilterOption> get _filters => FilterOption.values;
+  // 🔥 Filters list ab ComplaintStatus se generate ho rahi hai
+  List<ComplaintStatus?> get _filters => ComplaintStatusExtension.getFilterOptions();
 
   // 🔥 Helper function to get status color using enum
   Color _getStatusColor(ComplaintStatus status) {
@@ -177,6 +99,8 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
         return Colors.blue;
       case ComplaintStatus.resolved:
         return Colors.teal;
+      case ComplaintStatus.rejected:
+        return Colors.red;
     }
   }
 
@@ -264,7 +188,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                         label: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                           child: Text(
-                            filter.value, // 🔥 Enum ki value use ki
+                            ComplaintStatusExtension.getFilterDisplayName(filter), // 🔥 "All" ya status name
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               color: isSelected ? Colors.white : const Color(0xFF0F1A3D),
@@ -281,7 +205,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                         ),
                         onSelected: (selected) {
                           setState(() {
-                            _selectedFilter = filter; // 🔥 Enum assign kiya
+                            _selectedFilter = filter; // 🔥 null for "All" ya specific status
                           });
                         },
                       ),
@@ -351,9 +275,9 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                 );
               }
 
-              // 🔥 Filter complaints based on selected filter (Enum use kiya)
+              // 🔥 Filter complaints (null = All, warna specific status se compare)
               var complaints = snapshot.data!.docs.where((doc) {
-                if (_selectedFilter == FilterOption.all) return true;
+                if (_selectedFilter == null) return true; // 🔥 "All" selected hai
                 String statusString = doc['status'] ?? 'Pending';
                 ComplaintStatus status = ComplaintStatusExtension.fromString(statusString);
                 return status == _selectedFilter; // 🔥 Enum comparison
@@ -362,7 +286,7 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
               if (complaints.isEmpty) {
                 return Center(
                   child: Text(
-                    'No ${_selectedFilter.value} complaints found', // 🔥 Enum ki value use ki
+                    'No ${ComplaintStatusExtension.getFilterDisplayName(_selectedFilter)} complaints found',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: Colors.grey[600],

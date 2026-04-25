@@ -26,7 +26,9 @@ class AuthService {
     required String phone,
     required String paymentMethod,
     required double registrationFee,
-      String? profileImageUrl,  // 👈 YEH ADD KARO
+      String? profileImageUrl,  
+       String? departmentId,  // 🔥 NEW: Optional parameter (null for citizens
+
   }) async {
     try {
       // 1. Create user in Firebase Auth
@@ -50,7 +52,8 @@ class AuthService {
           phone: phone,
           paymentMethod: paymentMethod,
           registrationFee: registrationFee,
-          profileImageUrl: profileImageUrl, // 👈 YEH PASS KARO
+          profileImageUrl: profileImageUrl, 
+          departmentId: departmentId,  // 🔥 NEW: Pass departmentId
         );
 
         if (error != null) {
@@ -119,7 +122,7 @@ class AuthService {
             .collection('users')
             .doc(result.user!.uid)
             .update({
-          'lastLogin': FieldValue.serverTimestamp(), // This is correct now
+          'lastLogin': FieldValue.serverTimestamp(), 
         });
       }
 
