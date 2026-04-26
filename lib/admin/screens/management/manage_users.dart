@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_detail.dart';
 
 class ManageUsersScreen extends StatefulWidget {
@@ -11,127 +12,137 @@ class ManageUsersScreen extends StatefulWidget {
 class _ManageUsersScreenState extends State<ManageUsersScreen> {
   static const Color primaryBlue = Color(0xFF0A1F44);
 
-  // Sample user data
-  final List<Map<String, dynamic>> users = [
-    {
-      "name": "Alice Johnson",
-      "email": "alice@example.com",
-      "phone": "123-456-7890",
-      "role": "Admin",
-      "active": true,
-      "createdAt": "2026-01-15",
-      "profileImageUrl": "",
-    },
-    {
-      "name": "Bob Smith",
-      "email": "bob@example.com",
-      "phone": "987-654-3210",
-      "role": "Department Officer",
-      "active": false,
-      "createdAt": "2026-01-20",
-      "profileImageUrl": "",
-    },
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String selectedType = "citizen";
+  String search = "";
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
-
-      /// ---------------- AppBar ----------------
       appBar: AppBar(
-        title: const Text(
-          "Manage Users",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title:
+            const Text("Manage Users", style: TextStyle(color: Colors.white)),
         centerTitle: true,
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-
-      /// ---------------- Body ----------------
-      body: users.isEmpty
-          ? const Center(
-              child: Text(
-                "No users available",
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                final user = users[index];
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      radius: 25,
-                      backgroundColor: primaryBlue,
-                      backgroundImage:
-                          (user['profileImageUrl'] ?? '').isNotEmpty
-                          ? NetworkImage(user['profileImageUrl'])
-                          : null,
-                      child: (user['profileImageUrl'] ?? '').isEmpty
-                          ? const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 30,
-                            )
-                          : null,
-                    ),
-                    title: Text(
-                      user['name'],
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      "${user['email']} - ${user['role']}",
-                      style: TextStyle(color: Colors.grey[700]),
-                    ),
-                    trailing: Switch(
-                      value: user['active'],
-                      onChanged: (val) {
-                        setState(() {
-                          user['active'] = val;
-                        });
-                      },
-                      activeThumbColor: primaryBlue,
-                    ),
-                    onTap: () {
-                      // Open full UserDetailScreen
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => UserDetailScreen(
-                            userName: user['name'],
-                            email: user['email'],
-                            phone: user['phone'],
-                            role: user['role'],
-                            isActive: user['active'],
-                            createdAt: user['createdAt'],
-                            profileImageUrl: user['profileImageUrl'],
-                          ),
-                        ),
-                      );
+      body: Column(
+        children: [
+          /// ---------------- TYPE FILTER ----------------
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text("Citizens"),
+                    selected: selectedType == "citizen",
+                    onSelected: (_) {
+                      setState(() => selectedType = "citizen");
                     },
                   ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text("Officers"),
+                    selected: selectedType == "department_officer",
+                    onSelected: (_) {
+                      setState(() => selectedType = "department_officer");
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          /// ---------------- SEARCH ----------------
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: "Search users...",
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (val) {
+                setState(() => search = val.toLowerCase());
+              },
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          /// ---------------- LIST ----------------
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('users')
+                  .where('userType', isEqualTo: selectedType)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final users = snapshot.data!.docs.where((u) {
+                  final name = (u['name'] ?? "").toLowerCase();
+                  return name.contains(search);
+                }).toList();
+
+                if (users.isEmpty) {
+                  return const Center(child: Text("No users found"));
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final u = users[index];
+
+                    final isActive = u['isActive'] ?? false;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListTile(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserDetailScreen(
+                                userId: u.id,
+                              ),
+                            ),
+                          );
+                        },
+                        leading: const Icon(Icons.person, color: primaryBlue),
+                        title: Text(u['name'] ?? ""),
+                        subtitle: Text(u['email'] ?? ""),
+                        trailing: Switch(
+                          value: isActive,
+                          activeColor: primaryBlue,
+                          onChanged: (val) async {
+                            await _firestore
+                                .collection('users')
+                                .doc(u.id)
+                                .update({"isActive": val});
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
+          ),
+        ],
+      ),
     );
   }
 }

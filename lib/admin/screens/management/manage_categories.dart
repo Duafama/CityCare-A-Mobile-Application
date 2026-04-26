@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_category.dart';
 import 'category_detail.dart';
 
@@ -12,17 +13,12 @@ class ManageCategoriesScreen extends StatefulWidget {
 class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
   static const Color primaryBlue = Color(0xFF0A1F44);
 
-  final List<Map<String, dynamic>> categories = [
-    {"name": "Garbage", "dept": "Sanitation", "date": "2026-01-20"},
-    {"name": "Potholes", "dept": "Roads", "date": "2026-01-21"},
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
-
-      /// ---------------- AppBar ----------------
       appBar: AppBar(
         title: const Text(
           "Manage Categories",
@@ -32,148 +28,89 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-
-      /// ---------------- FAB ----------------
       floatingActionButton: FloatingActionButton(
         backgroundColor: primaryBlue,
+        child: const Icon(Icons.add, color: Colors.white),
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AddCategoryScreen()),
           );
         },
-        child: const Icon(Icons.add, color: Colors.white),
       ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore.collection('categories').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-      /// ---------------- Body ----------------
-      body: categories.isEmpty
-          ? const Center(
-              child: Text(
-                "No categories available",
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final cat = categories[index];
+          final docs = snapshot.data!.docs;
 
-                return Container(
+          if (docs.isEmpty) {
+            return const Center(child: Text("No categories found"));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final cat = docs[index];
+              final status = cat['status'] ?? 'inactive';
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CategoryDetailScreen(
+                        categoryId: cat.id,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      /// ---- Icon ----
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: primaryBlue.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.category, color: primaryBlue),
-                      ),
-
-                      const SizedBox(width: 16),
-
-                      /// ---- Info ----
+                      const Icon(Icons.category, color: primaryBlue),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               cat['name'],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600),
                             ),
-                            const SizedBox(height: 4),
                             Text(
-                              "${cat['dept']} - Created on ${cat['date']}",
+                              "Status: $status",
                               style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
+                                color: status == "active"
+                                    ? Colors.green
+                                    : Colors.red,
                               ),
                             ),
                           ],
                         ),
                       ),
-
-                      /// ---- Actions ----
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CategoryDetailScreen(
-                                name: cat['name'],
-                                department: cat['dept'],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          _confirmDelete(context, cat['name']);
-                        },
-                      ),
+                      Icon(
+                        status == "active" ? Icons.check_circle : Icons.cancel,
+                        color: status == "active" ? Colors.green : Colors.red,
+                      )
                     ],
                   ),
-                );
-              },
-            ),
-    );
-  }
-
-  /// ---------------- Delete Confirmation (UI-only) ----------------
-  void _confirmDelete(BuildContext context, String name) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          "Delete Category",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          "Are you sure you want to delete this category? This action cannot be undone.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.pop(context); // close dialog only
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("$name deleted successfully"),
-                  backgroundColor: Colors.green,
-                  behavior: SnackBarBehavior.floating,
                 ),
               );
             },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

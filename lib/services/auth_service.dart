@@ -26,9 +26,8 @@ class AuthService {
     required String phone,
     required String paymentMethod,
     required double registrationFee,
-      String? profileImageUrl,  
-       String? departmentId,  // 🔥 NEW: Optional parameter (null for citizens
-
+    String? profileImageUrl,
+    String? departmentId, // 🔥 NEW: Optional parameter (null for citizens
   }) async {
     try {
       // 1. Create user in Firebase Auth
@@ -52,8 +51,8 @@ class AuthService {
           phone: phone,
           paymentMethod: paymentMethod,
           registrationFee: registrationFee,
-          profileImageUrl: profileImageUrl, 
-          departmentId: departmentId,  // 🔥 NEW: Pass departmentId
+          profileImageUrl: profileImageUrl,
+          departmentId: departmentId, // 🔥 NEW: Pass departmentId
         );
 
         if (error != null) {
@@ -105,7 +104,47 @@ class AuthService {
     }
   }
 
-  // Login method 
+//Creating department Officer
+  Future<Map<String, dynamic>> createDepartmentOfficer({
+    required String name,
+    required String email,
+    required String password,
+    required String phone,
+    required String departmentId,
+  }) async {
+    try {
+      UserCredential result = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      User? user = result.user;
+
+      if (user != null) {
+        await user.updateDisplayName(name);
+
+        await _userService.saveUserData(
+          uid: user.uid,
+          name: name,
+          email: email,
+          phone: phone,
+          paymentMethod: "N/A",
+          registrationFee: 0.0,
+          profileImageUrl: null,
+          departmentId: departmentId,
+        );
+
+        return {"success": true, "user": user};
+      }
+
+      return {"success": false, "error": "User creation failed"};
+    } catch (e) {
+      return {"success": false, "error": e.toString()};
+    }
+  }
+
+  // Login method
+  // Login method
   Future<Map<String, dynamic>> loginWithEmail({
     required String email,
     required String password,
@@ -118,17 +157,22 @@ class AuthService {
 
       // Update last login in Firestore
       if (result.user != null) {
-        await _firestore // Use the class instance, not FirebaseFirestore.instance directly
-            .collection('users')
-            .doc(result.user!.uid)
-            .update({
-          'lastLogin': FieldValue.serverTimestamp(), 
+        await _firestore.collection('users').doc(result.user!.uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
         });
       }
+
+      // 🔥 FETCH ROLE + DEPARTMENT ID (ONLY ADDITION)
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(result.user!.uid).get();
+
+      Map<String, dynamic> data = Map<String, dynamic>.from(doc.data() as Map);
 
       return {
         'success': true,
         'user': result.user,
+        'role': data['userType'],
+        'departmentId': data['departmentId'],
       };
     } on FirebaseAuthException catch (e) {
       String message;
@@ -156,22 +200,18 @@ class AuthService {
       };
     }
   }
+
   //
   // Add this method in AuthService class
-Future<Map<String, dynamic>> resetPassword(String email) async {
-  try {
-    await _auth.sendPasswordResetEmail(email: email.trim());
-    return {
-      'success': true,
-      'message': 'Password reset email sent!'
-    };
-  } on FirebaseAuthException catch (e) {
-    return {
-      'success': false,
-      'error': e.message
-    };
+  Future<Map<String, dynamic>> resetPassword(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return {'success': true, 'message': 'Password reset email sent!'};
+    } on FirebaseAuthException catch (e) {
+      return {'success': false, 'error': e.message};
+    }
   }
-}
+
   // Logout
   Future<void> logout() async {
     await _auth.signOut();

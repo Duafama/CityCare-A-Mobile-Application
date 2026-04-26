@@ -17,11 +17,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   // 🔴 REAL-TIME VALIDATION VARIABLES
   String? _emailError;
   String? _passwordError;
-  
+
   bool _isLoading = false;
   bool _rememberMe = false;
   bool _isPasswordVisible = false;
@@ -73,10 +73,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // 🔴 CHECK IF FORM IS VALID
   bool _isFormValid() {
-    return _emailError == null && 
-           _passwordError == null &&
-           _emailController.text.isNotEmpty &&
-           _passwordController.text.isNotEmpty;
+    return _emailError == null &&
+        _passwordError == null &&
+        _emailController.text.isNotEmpty &&
+        _passwordController.text.isNotEmpty;
   }
 
   // 🔴 LOGIN FUNCTION WITH FIREBASE & ROLE-BASED REDIRECTION
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Final validation check
     _validateEmail();
     _validatePassword();
-    
+
     if (!_isFormValid()) {
       return;
     }
@@ -103,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result['success'] == true && mounted) {
         String role = result['role'] ?? 'citizen';
         String? departmentId = result['departmentId'];
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -132,10 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
         if (role == 'admin') {
           // Admin panel
           Navigator.pushReplacementNamed(context, '/admin-dashboard');
-        } else if (role == 'department') {
+        } else if (role == 'department_officer') {
           // Department panel with department ID
           Navigator.pushReplacementNamed(
-            context, 
+            context,
             '/department-dashboard',
             arguments: {'departmentId': departmentId},
           );
@@ -197,8 +197,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Back Button
                 const SizedBox(height: 20),
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, 
-                    color: Colors.white, size: 22),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 22),
                   onPressed: () {
                     Navigator.pop(context);
                   },
@@ -260,28 +260,35 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: const Color(0xFF0F1A3D).withOpacity(0.6),
                               ),
                               prefixIcon: Icon(Icons.email_outlined,
-                                color: const Color(0xFF0F1A3D).withOpacity(0.7)),
+                                  color:
+                                      const Color(0xFF0F1A3D).withOpacity(0.7)),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: _emailError != null ? Colors.red : Colors.grey[300]!,
+                                  color: _emailError != null
+                                      ? Colors.red
+                                      : Colors.grey[300]!,
                                 ),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: _emailError != null ? Colors.red : Colors.grey[300]!,
+                                  color: _emailError != null
+                                      ? Colors.red
+                                      : Colors.grey[300]!,
                                 ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: _emailError != null ? Colors.red : const Color(0xFF4A6FFF),
+                                  color: _emailError != null
+                                      ? Colors.red
+                                      : const Color(0xFF4A6FFF),
                                   width: 2,
                                 ),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 16),
+                                  vertical: 16, horizontal: 16),
                             ),
                           ),
                           if (_emailError != null)
@@ -289,7 +296,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               padding: const EdgeInsets.only(top: 8, left: 12),
                               child: Row(
                                 children: [
-                                  Icon(Icons.error, color: Colors.red, size: 16),
+                                  Icon(Icons.error,
+                                      color: Colors.red, size: 16),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
@@ -325,13 +333,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: const Color(0xFF0F1A3D).withOpacity(0.6),
                               ),
                               prefixIcon: Icon(Icons.lock_outline,
-                                color: const Color(0xFF0F1A3D).withOpacity(0.7)),
+                                  color:
+                                      const Color(0xFF0F1A3D).withOpacity(0.7)),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _isPasswordVisible
                                       ? Icons.visibility
                                       : Icons.visibility_off,
-                                  color: const Color(0xFF0F1A3D).withOpacity(0.6),
+                                  color:
+                                      const Color(0xFF0F1A3D).withOpacity(0.6),
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -342,24 +352,30 @@ class _LoginScreenState extends State<LoginScreen> {
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: _passwordError != null ? Colors.red : Colors.grey[300]!,
+                                  color: _passwordError != null
+                                      ? Colors.red
+                                      : Colors.grey[300]!,
                                 ),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: _passwordError != null ? Colors.red : Colors.grey[300]!,
+                                  color: _passwordError != null
+                                      ? Colors.red
+                                      : Colors.grey[300]!,
                                 ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: _passwordError != null ? Colors.red : const Color(0xFF4A6FFF),
+                                  color: _passwordError != null
+                                      ? Colors.red
+                                      : const Color(0xFF4A6FFF),
                                   width: 2,
                                 ),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 16),
+                                  vertical: 16, horizontal: 16),
                             ),
                           ),
                           if (_passwordError != null)
@@ -367,7 +383,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               padding: const EdgeInsets.only(top: 8, left: 12),
                               child: Row(
                                 children: [
-                                  Icon(Icons.error, color: Colors.red, size: 16),
+                                  Icon(Icons.error,
+                                      color: Colors.red, size: 16),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
@@ -404,7 +421,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 visualDensity: VisualDensity.compact,
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
                               ),
                               Text(
                                 'Remember me',
@@ -418,7 +436,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextButton(
                             onPressed: () {
                               // TODO: Implement forgot password
-                                Navigator.pushNamed(context, '/forgot-password');
+                              Navigator.pushNamed(context, '/forgot-password');
                             },
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
@@ -446,13 +464,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4A6FFF), // 🔵 ALWAYS NAVY BLUE
+                            backgroundColor:
+                                const Color(0xFF4A6FFF), // 🔵 ALWAYS NAVY BLUE
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                             elevation: 5,
-                            shadowColor: const Color(0xFF4A6FFF).withOpacity(0.3),
+                            shadowColor:
+                                const Color(0xFF4A6FFF).withOpacity(0.3),
                           ),
                           child: _isLoading
                               ? const SizedBox(
@@ -460,7 +480,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                    valueColor:
+                                        AlwaysStoppedAnimation(Colors.white),
                                   ),
                                 )
                               : Text(
@@ -507,7 +528,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 52,
                         child: OutlinedButton(
                           onPressed: () {
-                            Navigator.pushReplacementNamed(context, '/register');
+                            Navigator.pushReplacementNamed(
+                                context, '/register');
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(

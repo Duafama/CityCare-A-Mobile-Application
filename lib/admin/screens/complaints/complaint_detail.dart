@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ComplaintDetailScreen extends StatefulWidget {
   const ComplaintDetailScreen({super.key});
@@ -8,111 +9,118 @@ class ComplaintDetailScreen extends StatefulWidget {
 }
 
 class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
-  Map<String, dynamic> complaint = {};
+  Map<String, dynamic>? data;
+  bool loading = true;
 
-  static const Color primaryBlue = Color(0xFF0A1F44);
+  String? docId;
+  String? selectedDept;
+
+  List<String> departments = [];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final args = ModalRoute.of(context)?.settings.arguments;
+    docId = ModalRoute.of(context)!.settings.arguments as String;
 
-    if (args is Map<String, dynamic>) {
-      complaint = args;
-    } else if (args is Map) {
-      complaint = Map<String, dynamic>.from(args);
-    } else {
-      complaint = {
-        "title": "Sample Complaint",
-        "category": "Sanitation",
-        "department": "Sanitation",
-        "description": "No description provided.",
-        "date": "N/A",
-        "priority": "Low",
-        "location": "Unknown",
-        "status": "Pending",
-        "images": [],
-      };
-    }
+    _load();
+    _loadDepartments();
   }
 
-  /// ---------------- ACTION DIALOG ----------------
-  void handleAction(String action) {
+  Future<void> _load() async {
+    final doc = await FirebaseFirestore.instance
+        .collection('complaints')
+        .doc(docId)
+        .get();
+
     setState(() {
-      complaint['status'] = action;
+      data = doc.data();
+      loading = false;
+      selectedDept = data?['departmentName'];
+    });
+  }
+
+  Future<void> _loadDepartments() async {
+    final snap =
+        await FirebaseFirestore.instance.collection('departments').get();
+
+    setState(() {
+      departments = snap.docs.map((e) => e['name'].toString()).toList();
+    });
+  }
+
+  Future<void> _updateStatus(String status) async {
+    await FirebaseFirestore.instance
+        .collection('complaints')
+        .doc(docId)
+        .update({"status": status});
+
+    setState(() => data!['status'] = status);
+  }
+
+  Future<void> _updateDepartment(String deptName) async {
+    // 🔥 get departmentId first
+    final deptSnap = await FirebaseFirestore.instance
+        .collection('departments')
+        .where('name', isEqualTo: deptName)
+        .limit(1)
+        .get();
+
+    if (deptSnap.docs.isEmpty) return;
+
+    final deptId = deptSnap.docs.first.id;
+
+    // 🔥 find category using departmentId (NOT name)
+    final catSnap = await FirebaseFirestore.instance
+        .collection('categories')
+        .where('departmentId', isEqualTo: deptId)
+        .limit(1)
+        .get();
+
+    String newCategory = "Other";
+    String newCategoryId = "";
+
+    if (catSnap.docs.isNotEmpty) {
+      newCategory = catSnap.docs.first['name'];
+      newCategoryId = catSnap.docs.first.id;
+    }
+
+    // 🔥 update Firestore properly
+    await FirebaseFirestore.instance
+        .collection('complaints')
+        .doc(docId)
+        .update({
+      "departmentName": deptName,
+      "departmentId": deptId,
+      "categoryName": newCategory,
+      "categoryId": newCategoryId,
     });
 
+    // 🔥 update UI
+    setState(() {
+      selectedDept = deptName;
+      data!['departmentName'] = deptName;
+      data!['categoryName'] = newCategory;
+    });
+  }
+
+  void _confirmAction(String action) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              action == "Approved" ? Icons.check_circle : Icons.cancel,
-              color: action == "Approved" ? Colors.green : Colors.red,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                "Complaint $action",
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          "The complaint has been $action successfully.",
-          style: const TextStyle(fontSize: 16),
-        ),
+        title: Text("$action Complaint"),
+        content: const Text("Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          )
-        ],
-      ),
-    );
-  }
-
-  /// ---------------- PRIORITY COLOR ----------------
-  Color priorityColor(String priority) {
-    switch (priority) {
-      case "High":
-        return Colors.red;
-      case "Medium":
-        return Colors.orange;
-      case "Low":
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  /// ---------------- INFO ROW ----------------
-  Widget infoRow(String label, String value, {Color? valueColor}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: valueColor ?? Colors.black,
-              ),
-            ),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _updateStatus(action);
+            },
+            child: Text(action),
           ),
         ],
       ),
@@ -121,132 +129,211 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (complaint.isEmpty) {
+    if (loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final String status = complaint['status']?.toString() ?? "Pending";
+    final isPending = data!['status'] == "Pending";
+    final isOther = data!['categoryName'] == "Other";
 
-    final List<String> images = (complaint['images'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        [];
+    final images = List<String>.from(data!['beforeImages'] ?? []);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
+
+      /// ✅ APPBAR FIX (WHITE ARROW)
       appBar: AppBar(
-        centerTitle: true,
-        backgroundColor: primaryBlue,
+        backgroundColor: const Color(0xFF0A1F44),
         iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          "${status[0].toUpperCase()}${status.substring(1)} Complaint",
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        title: const Text(
+          "Complaint Detail",
+          style: TextStyle(color: Colors.white),
         ),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Title
-            Text(
-              complaint['title']?.toString() ?? "Complaint",
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            /// ================= CATEGORY =================
+            _card(
+              title: "Category",
+              value: data!['categoryName'] ?? '',
             ),
-            const SizedBox(height: 16),
 
-            /// Info
-            infoRow("Category", complaint['category']?.toString() ?? "N/A",
-                valueColor: primaryBlue),
-            infoRow("Department", complaint['department']?.toString() ?? "N/A"),
-            infoRow(
-                "Description", complaint['description']?.toString() ?? "N/A"),
-            infoRow("Date", complaint['date']?.toString() ?? "N/A"),
-            infoRow(
-              "Priority",
-              complaint['priority']?.toString() ?? "Low",
-              valueColor:
-                  priorityColor(complaint['priority']?.toString() ?? "Low"),
+            /// ================= DEPARTMENT =================
+            _card(
+              title: "Department",
+              child: isPending
+                  ? DropdownButton<String>(
+                      value: selectedDept,
+                      isExpanded: true,
+                      hint: const Text("Select Department"),
+                      items: departments
+                          .map((d) => DropdownMenuItem(
+                                value: d,
+                                child: Text(d),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) _updateDepartment(v);
+                      },
+                    )
+                  : Text(data!['departmentName'] ?? ''),
             ),
-            infoRow("Location", complaint['location']?.toString() ?? "N/A"),
-            infoRow("Status", status,
-                valueColor: status == "Approved"
-                    ? Colors.green
-                    : status == "Rejected"
-                        ? Colors.red
-                        : Colors.orange),
 
-            const SizedBox(height: 16),
+            /// ================= PRIORITY =================
+            _card(
+              title: "Priority",
+              value: data!['priority'] ?? '',
+              valueColor: _priorityColor(data!['priority']),
+            ),
 
-            /// Images
+            /// ================= DESCRIPTION =================
+            _card(
+              title: "Description",
+              value: data!['description'] ?? '',
+            ),
+
+            /// ================= ADDRESS =================
+            _card(
+              title: "Address",
+              value: data!['location'] ?? '',
+            ),
+
+            /// ================= CITIZEN =================
+            _card(
+              title: "Citizen",
+              value: data!['citizenEmail'] ?? '',
+            ),
+
+            /// ================= DATE =================
+            _card(
+              title: "Date",
+              value:
+                  (data!['createdAt'] as Timestamp?)?.toDate().toString() ?? '',
+            ),
+
+            const SizedBox(height: 10),
+
+            /// ================= IMAGES =================
             if (images.isNotEmpty) ...[
-              const Text("Images",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                "Images",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               SizedBox(
-                height: 120,
-                child: ListView.separated(
+                height: 100,
+                child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: images.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        images[index],
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 120,
-                          height: 120,
-                          color: Colors.grey.shade300,
-                          child: const Icon(Icons.image),
-                        ),
-                      ),
-                    );
-                  },
+                  itemBuilder: (_, i) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(images[i]),
+                    ),
+                  ),
                 ),
               ),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            /// Buttons only if Pending
-            if (status.toLowerCase() == "pending") ...[
+            /// ================= ACTIONS =================
+            if (isPending)
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => handleAction("Approved"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
+                      onPressed: () {
+                        if (isOther && selectedDept == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Please select department first"),
+                            ),
+                          );
+                          return;
+                        }
+                        _confirmAction("Approved");
+                      },
                       child: const Text("Approve"),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => handleAction("Rejected"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
+                      onPressed: () => _confirmAction("Rejected"),
                       child: const Text("Reject"),
                     ),
                   ),
                 ],
               ),
-            ],
           ],
         ),
       ),
     );
+  }
+
+  /// ================= UI CARD =================
+  Widget _card({
+    required String title,
+    String? value,
+    Widget? child,
+    Color? valueColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 6),
+          child ??
+              Text(
+                value ?? '',
+                style: TextStyle(
+                  color: valueColor ?? Colors.black,
+                  fontSize: 14,
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+
+  Color _priorityColor(String p) {
+    switch (p) {
+      case "High":
+        return Colors.red;
+      case "Medium":
+        return Colors.orange;
+      case "Low":
+        return Colors.green;
+      default:
+        return Colors.black;
+    }
   }
 }
