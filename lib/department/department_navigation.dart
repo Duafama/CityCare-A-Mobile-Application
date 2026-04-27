@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'department_routes.dart';
+import 'package:provider/provider.dart';
+import '../providers/department_provider.dart';
 
 const Color primaryBlue = Color(0xFF0A1F44);
 const Color lightGrey = Color(0xFFF4F6F8);
 
 /// ---------------- Drawer ----------------
 Drawer departmentDrawer(BuildContext context) {
+  
   return Drawer(
     child: ListView(
       padding: EdgeInsets.zero,
@@ -26,7 +29,7 @@ Drawer departmentDrawer(BuildContext context) {
               ),
               SizedBox(height: 6),
               Text(
-                "Sanitation Department",
+                "Officer Panel",
                 style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ],
@@ -166,11 +169,13 @@ void _showLogoutDialog(BuildContext context) {
         TextButton(
           onPressed: () {
             Navigator.pop(context);
-            // Add logout logic here
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Logged out successfully")),
-            );
-          },
+
+            // 🔥 CLEAR PROVIDER
+            context.read<DepartmentProvider>().clear();
+
+            // Optional: navigate to login
+            Navigator.pushReplacementNamed(context, '/login');
+        },
           child: const Text(
             "Logout",
             style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),

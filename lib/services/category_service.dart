@@ -48,4 +48,15 @@ class CategoryService {
         .map((doc) => Category.fromMap(doc.id, doc.data()))
         .toList();
   }
+
+  Future<List<Category>> getCategoriesByDepartment(String departmentId) async {
+  final snapshot = await _firestore
+      .collection('categories')
+      .where('departmentId', isEqualTo: departmentId)
+      .get();
+
+  return snapshot.docs
+      .map((doc) => Category.fromMap(doc.id, doc.data()))
+      .toList();
+}
 }

@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:city_care/admin/admin_dashboard.dart';
 import 'package:city_care/department/department_dashboard.dart';
 import 'package:city_care/services/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/department_provider.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -133,11 +136,21 @@ class _LoginScreenState extends State<LoginScreen> {
           // Admin panel
           Navigator.pushReplacementNamed(context, '/admin-dashboard');
         } else if (role == 'department_officer') {
-          // Department panel with department ID
+          if (departmentId == null || departmentId.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Department not assigned to this user"),
+                ),
+              );
+              return;
+            }
+          // 🔥 STORE IN PROVIDER
+          context.read<DepartmentProvider>().setDepartmentId(departmentId);
+
+          // 🔥 NAVIGATE (NO ARGUMENTS)
           Navigator.pushReplacementNamed(
             context,
             '/department-dashboard',
-            arguments: {'departmentId': departmentId},
           );
         } else {
           // Citizen dashboard

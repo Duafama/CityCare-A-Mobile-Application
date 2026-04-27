@@ -54,6 +54,18 @@ class DepartmentService {
     }).toList();
   }
 
+  Future<String> getDepartmentName(String id) async {
+  final doc = await _firestore.collection('departments').doc(id).get();
+
+  if (!doc.exists || doc.data() == null) {
+    return "Department";
+  }
+
+  final data = doc.data() as Map<String, dynamic>;
+
+  return data['name'] ?? "Department";
+  }
+
   Future<List<Department>> getInactiveDepartments() async {
     final snapshot = await _firestore
         .collection('departments')

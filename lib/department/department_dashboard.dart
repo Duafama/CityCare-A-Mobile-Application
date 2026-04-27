@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'department_navigation.dart';
 import 'department_routes.dart';
+import '../services/departmentComplaintService.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/complaint.dart';
+import '../services/department_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/department_provider.dart';
 
 class DepartmentDashboard extends StatefulWidget {
   const DepartmentDashboard({super.key});
@@ -10,14 +17,65 @@ class DepartmentDashboard extends StatefulWidget {
 }
 
 class _DepartmentDashboardState extends State<DepartmentDashboard> {
-  final String departmentName = "Sanitation Department";
-  final int _currentIndex = 0;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  int _currentIndex = 0;
 
-  static const Color primaryBlue = Color(0xFF0A1F44); // navy blue
+  String departmentName = "Loading...";
+  List<Complaint> complaints = [];
+
+  int newCount = 0;
+  int activeCount = 0;
+  int progressCount = 0;
+  int resolvedCount = 0;
+
+  bool isLoading = true;
+
+  static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);
 
   @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadDashboardData();
+    });
+  }
+
+  Future<void> loadDashboardData() async {
+    try {
+      final departmentId =
+          context.read<DepartmentProvider>().departmentId;
+
+      if (departmentId == null) return;
+
+      // Department name
+      departmentName =
+          await DepartmentService().getDepartmentName(departmentId);
+
+      // Complaints
+      complaints = await DepartmentComplaintService()
+          .getAssignedComplaints(departmentId);
+
+      setState(() {
+        newCount = complaints.where((c) => c.status == "Pending").length;
+        activeCount = complaints.where((c) => c.status == "Approved").length;
+        progressCount =
+            complaints.where((c) => c.status == "InProgress").length;
+        resolvedCount =
+            complaints.where((c) => c.status == "Resolved").length;
+
+        isLoading = false;
+      });
+    } catch (e) {
+      print(e);
+      setState(() => isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       backgroundColor: lightGrey,
 
@@ -40,7 +98,7 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
       ),
 
       /// ---------------- Drawer ----------------
-      // drawer: departmentDrawer(context),
+      // drawer: departmentDrawer(context, departmentName),
 
       /// ---------------- Body ----------------
       body: SingleChildScrollView(
@@ -65,25 +123,25 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               physics: const NeverScrollableScrollPhysics(),
-              children: const [
+              children: [
                 DashboardCard(
                   title: "New",
-                  count: "2",
+                  count: newCount.toString(),
                   color: Color(0xFFFFA726),
                 ),
                 DashboardCard(
                   title: "Active",
-                  count: "2",
+                  count: activeCount.toString(),
                   color: Color(0xFF1E88E5),
                 ),
                 DashboardCard(
                   title: "In Progress",
-                  count: "5",
+                  count: progressCount.toString(),
                   color: Color(0xFF43A047),
                 ),
                 DashboardCard(
                   title: "Resolved",
-                  count: "14",
+                  count: resolvedCount.toString(),
                   color: Color(0xFF00897B),
                 ),
               ],
@@ -119,41 +177,23 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
             ),
             const SizedBox(height: 12),
 
-            ComplaintCard(
-              title: "Broken Streetlight",
-              location: "123 Main Street, Udaipur",
-              date: "1/3/2026",
-              status: "Approved",
-              priority: "Medium",
-              priorityColor: Colors.amber,
-              onTap: () {
-                Navigator.pushNamed(context, DepartmentRoutes.complaintDetail);
-              },
-            ),
-            const SizedBox(height: 8),
-            ComplaintCard(
-              title: "Pothole on Main Street",
-              location: "Lexton Street, XYZ",
-              date: "12/23/2025",
-              status: "Approved",
-              priority: "High",
-              priorityColor: Colors.red,
-              onTap: () {
-                Navigator.pushNamed(context, DepartmentRoutes.complaintDetail);
-              },
-            ),
-            const SizedBox(height: 8),
-            ComplaintCard(
-              title: "Water Leakage Issue",
-              location: "Sector 10, Near Market",
-              date: "12/20/2025",
-              status: "In Progress",
-              priority: "High",
-              priorityColor: Colors.red,
-              onTap: () {
-                Navigator.pushNamed(context, DepartmentRoutes.complaintDetail);
-              },
-            ),
+            ...complaints.take(3).map((c) {
+              return ComplaintCard(
+                title: c.categoryName,
+                location: c.location,
+                date: c.createdAt?.toString().split(" ")[0] ?? "",
+                status: c.status,
+                priority: c.priority,
+                priorityColor: c.priority == "High" ? Colors.red : Colors.amber,
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    DepartmentRoutes.complaintDetail,
+                    arguments: c.complaintId,
+                  );
+                },
+              );
+            }).toList(),
           ],
         ),
       ),
@@ -312,7 +352,8 @@ class ComplaintCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       location,
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],

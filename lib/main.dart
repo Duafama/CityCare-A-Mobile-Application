@@ -7,6 +7,8 @@ import 'package:city_care/department/department_dashboard.dart';
 import 'package:firebase_core/firebase_core.dart';
 //
 import 'package:city_care/services/payment_service.dart'; // ✅ Add this
+import 'package:provider/provider.dart';
+import 'providers/department_provider.dart';
 
 // ADD THESE IMPORTS:
 import 'user/auth_wrapper.dart';
@@ -18,9 +20,18 @@ import 'user/forgot_password_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  //
-  await PaymentService.initialize(); // ✅ Initialize Stripe
-  runApp(const CityCareApp());
+  await PaymentService.initialize();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => DepartmentProvider(),
+        ),
+      ],
+      child: const CityCareApp(),
+    ),
+  );
 }
 
 class CityCareApp extends StatelessWidget {

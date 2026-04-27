@@ -17,7 +17,7 @@ extension ComplaintStatusExtension on ComplaintStatus {
       case ComplaintStatus.approved:
         return 'Approved';
       case ComplaintStatus.inProgress:
-        return 'In-Progress';
+        return 'InProgress';
       case ComplaintStatus.resolved:
         return 'Resolved';
       case ComplaintStatus.rejected:
@@ -31,7 +31,7 @@ extension ComplaintStatusExtension on ComplaintStatus {
         return ComplaintStatus.pending;
       case 'Approved':
         return ComplaintStatus.approved;
-      case 'In-Progress':
+      case 'InProgress':
         return ComplaintStatus.inProgress;
       case 'Resolved':
         return ComplaintStatus.resolved;
