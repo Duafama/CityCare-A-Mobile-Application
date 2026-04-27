@@ -5,7 +5,7 @@ import 'admin_dashboard.dart';
 
 // Reports
 import 'screens/reports/reports_menu.dart';
-import 'screens/reports/report_detail.dart';
+import 'screens/reports/admin_overall_report.dart';
 import 'screens/reports/department_report_screen.dart';
 
 // Complaints
@@ -30,7 +30,7 @@ class AppRoutes {
   static const adminDashboard = '/adminDashboard';
 
   static const reportsMenu = '/reportsMenu';
-  static const reportDetail = '/reportDetail';
+  static const overallReport = '/overallReport';
   static const departmentReport = '/departmentReport';
 
   static const complaintsMenu = '/complaintsMenu';
@@ -55,19 +55,43 @@ class AppRoutes {
   /// ---------------- ROUTES MAP ----------------
   static final Map<String, WidgetBuilder> routes = {
     adminDashboard: (_) => const AdminDashboard(),
+
     reportsMenu: (_) => const ReportsMenuScreen(),
-    reportDetail: (_) => const ReportDetailScreen(),
-    departmentReport: (_) =>
-        const DepartmentReportScreen(department: "Sanitation"),
+
+    overallReport: (_) => const AdminOverallReportScreen(),
+
+    /// DepartmentReportScreen now requires departmentId + departmentName.
+    /// These are always passed via Navigator.push() with MaterialPageRoute
+    /// directly from ReportsMenuScreen and AdminOverallReportScreen,
+    /// so this named route entry is just a safe fallback.
+    departmentReport: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map<String, String>) {
+        return DepartmentReportScreen(
+          departmentId: args['departmentId'] ?? '',
+          departmentName: args['departmentName'] ?? 'Department',
+        );
+      }
+      // Fallback — should not normally be reached
+      return const Scaffold(
+        body: Center(child: Text("No department selected.")),
+      );
+    },
+
     complaintsMenu: (_) => const ComplaintsMenuScreen(),
     complaintList: (_) => const ComplaintListScreen(),
     complaintDetail: (_) => const ComplaintDetailScreen(),
+
     profile: (_) => const ProfileScreen(),
+
     manageDepartments: (_) => const ManageDepartmentsScreen(),
     addDepartment: (_) => const AddDepartmentScreen(),
+
     manageCategories: (_) => const ManageCategoriesScreen(),
     addCategory: (_) => const AddCategoryScreen(),
+
     manageUsers: (_) => const ManageUsersScreen(),
+
     flaggedComments: (_) => const FlaggedCommentsScreen(),
     commentDetail: (_) => const CommentDetailScreen(
           comment: "Sample Comment",
