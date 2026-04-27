@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'department_routes.dart';
+import 'package:provider/provider.dart';
+import '../providers/department_provider.dart';
 
 const Color primaryBlue = Color(0xFF0A1F44);
 const Color lightGrey = Color(0xFFF4F6F8);
@@ -26,37 +28,18 @@ Drawer departmentDrawer(BuildContext context) {
               ),
               SizedBox(height: 6),
               Text(
-                "Sanitation Department",
+                "Officer Panel",
                 style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ],
           ),
         ),
 
-        drawerItem(
-          context,
-          Icons.dashboard,
-          "Dashboard",
-          DepartmentRoutes.dashboard,
-        ),
-        drawerItem(
-          context,
-          Icons.report,
-          "Complaints",
-          DepartmentRoutes.list,
-        ),
-        drawerItem(
-          context,
-          Icons.bar_chart,
-          "Reports",
-          DepartmentRoutes.reports,
-        ),
-        drawerItem(
-          context,
-          Icons.settings,
-          "Settings",
-          DepartmentRoutes.settings,
-        ),
+        drawerItem(context, Icons.dashboard, "Dashboard", DepartmentRoutes.dashboard),
+        drawerItem(context, Icons.category, "Categories", DepartmentRoutes.categories),
+        drawerItem(context, Icons.report, "Complaints", DepartmentRoutes.list),
+        drawerItem(context, Icons.bar_chart, "Reports", DepartmentRoutes.reports),
+        drawerItem(context, Icons.settings, "Settings", DepartmentRoutes.settings),
 
         const Divider(),
 
@@ -106,6 +89,12 @@ ListTile drawerItem(
 }
 
 /// ---------------- Bottom Navigation ----------------
+/// Tab indices:
+///   0 → Dashboard
+///   1 → Categories
+///   2 → Complaints
+///   3 → Reports
+///   4 → Settings
 BottomNavigationBar departmentBottomNav(BuildContext context, int currentIndex) {
   return BottomNavigationBar(
     currentIndex: currentIndex,
@@ -119,18 +108,22 @@ BottomNavigationBar departmentBottomNav(BuildContext context, int currentIndex) 
           Navigator.pushReplacementNamed(context, DepartmentRoutes.dashboard);
           break;
         case 1:
-          Navigator.pushReplacementNamed(context, DepartmentRoutes.list);
+          Navigator.pushReplacementNamed(context, DepartmentRoutes.categories);
           break;
         case 2:
-          Navigator.pushReplacementNamed(context, DepartmentRoutes.reports);
+          Navigator.pushReplacementNamed(context, DepartmentRoutes.list);
           break;
         case 3:
+          Navigator.pushReplacementNamed(context, DepartmentRoutes.reports);
+          break;
+        case 4:
           Navigator.pushReplacementNamed(context, DepartmentRoutes.settings);
           break;
       }
     },
     items: const [
       BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Dashboard"),
+      BottomNavigationBarItem(icon: Icon(Icons.category), label: "Categories"),
       BottomNavigationBarItem(icon: Icon(Icons.report), label: "Complaints"),
       BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Reports"),
       BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
@@ -166,10 +159,11 @@ void _showLogoutDialog(BuildContext context) {
         TextButton(
           onPressed: () {
             Navigator.pop(context);
-            // Add logout logic here
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Logged out successfully")),
-            );
+
+            // 🔥 CLEAR PROVIDER
+            context.read<DepartmentProvider>().clear();
+
+            Navigator.pushReplacementNamed(context, '/login');
           },
           child: const Text(
             "Logout",

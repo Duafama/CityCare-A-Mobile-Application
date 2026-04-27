@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../models/complaint_enums.dart';
 import '../../app_routes.dart';
 
 class ComplaintListScreen extends StatefulWidget {
@@ -9,111 +11,182 @@ class ComplaintListScreen extends StatefulWidget {
 }
 
 class _ComplaintListScreenState extends State<ComplaintListScreen> {
+  ComplaintStatus? selectedStatus;
   String? selectedDept;
   String? sortOrder;
 
-  static const Color primaryBlue = Color(0xFF0A1F44);
-  static const Color lightGrey = Color(0xFFF4F6F8);
-
-  final List<String> departments = [
-    "Sanitation",
-    "Roads",
-    "Water Supply",
-    "Electricity",
-    "Health",
-    "Education",
-  ];
+  List<String> departments = [];
 
   final List<Map<String, String>> sortOptions = [
-    {"value": "date_new_old", "label": "Date: New → Old"},
-    {"value": "date_old_new", "label": "Date: Old → New"},
-    {"value": "priority_low_high", "label": "Priority: Low → High"},
-    {"value": "priority_high_low", "label": "Priority: High → Low"},
-    {"value": "name_a_z", "label": "Name: A → Z"},
-    {"value": "name_z_a", "label": "Name: Z → A"},
+    {"value": "date_new_old", "label": "Date ↓"},
+    {"value": "date_old_new", "label": "Date ↑"},
+    {"value": "priority_low_high", "label": "Priority ↑"},
+    {"value": "priority_high_low", "label": "Priority ↓"},
+    {"value": "name_a_z", "label": "A → Z"},
+    {"value": "name_z_a", "label": "Z → A"},
   ];
 
   @override
-  Widget build(BuildContext context) {
-    final String status = ModalRoute.of(context)!.settings.arguments as String;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    final List<Map<String, dynamic>> complaints = List.generate(
-      10,
-      (index) => {
-        "title": "Complaint #$index",
-        "status": status,
-        "priority": ["Low", "Medium", "High"][index % 3],
-        "department": departments[index % departments.length],
-        "date": DateTime(2026, 1, 10 + index),
-      },
-    );
-
-    final filteredComplaints = complaints
-        .where((c) => selectedDept == null || selectedDept == c['department'])
-        .toList();
-
-    if (sortOrder != null) {
-      switch (sortOrder) {
-        case "priority_low_high":
-          filteredComplaints.sort((a, b) => _priorityValue(a['priority'])
-              .compareTo(_priorityValue(b['priority'])));
-          break;
-        case "priority_high_low":
-          filteredComplaints.sort((a, b) => _priorityValue(b['priority'])
-              .compareTo(_priorityValue(a['priority'])));
-          break;
-        case "name_a_z":
-          filteredComplaints.sort((a, b) => a['title'].compareTo(b['title']));
-          break;
-        case "name_z_a":
-          filteredComplaints.sort((a, b) => b['title'].compareTo(a['title']));
-          break;
-        case "date_new_old":
-          filteredComplaints
-              .sort((a, b) => (b['date'] as DateTime).compareTo(a['date']));
-          break;
-        case "date_old_new":
-          filteredComplaints
-              .sort((a, b) => (a['date'] as DateTime).compareTo(b['date']));
-          break;
-      }
+    final arg = ModalRoute.of(context)!.settings.arguments;
+    if (arg is ComplaintStatus) {
+      selectedStatus = arg;
     }
 
+    _loadDepartments();
+  }
+
+  Future<void> _loadDepartments() async {
+    final snap =
+        await FirebaseFirestore.instance.collection('departments').get();
+
+    setState(() {
+      departments = snap.docs.map((e) => e['name'].toString()).toList();
+    });
+  }
+
+  Stream<QuerySnapshot> _stream() {
+    if (selectedStatus == null) {
+      return FirebaseFirestore.instance.collection('complaints').snapshots();
+    }
+
+    return FirebaseFirestore.instance
+        .collection('complaints')
+        .where('status', isEqualTo: selectedStatus!.value)
+        .snapshots();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: lightGrey,
+      backgroundColor: const Color(0xFFF4F6F8),
       appBar: AppBar(
-        title: Text("$status Complaints",
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: primaryBlue,
+        backgroundColor: const Color(0xFF0A1F44),
         iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          selectedStatus?.value ?? "Complaints",
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            /// FILTER + SORT
+            /// ================= FILTER + SORT =================
             Row(
               children: [
-                Expanded(child: _buildDepartmentFilter()),
-                const SizedBox(width: 12),
-                Expanded(child: _buildSortDropdown()),
+                Expanded(child: _box(_deptDropdown())),
+                const SizedBox(width: 8),
+                Expanded(child: _box(_sortDropdown())),
               ],
             ),
-            const SizedBox(height: 16),
 
-            /// LIST
+            const SizedBox(height: 12),
+
+            /// ================= LIST =================
             Expanded(
-              child: filteredComplaints.isEmpty
-                  ? Center(
-                      child: Text("No complaints found",
-                          style: TextStyle(color: Colors.grey[600])),
-                    )
-                  : ListView.builder(
-                      itemCount: filteredComplaints.length,
-                      itemBuilder: (context, index) =>
-                          _complaintCard(filteredComplaints[index]),
-                    ),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _stream(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  var docs = snapshot.data!.docs;
+
+                  /// FILTER
+                  var list = docs.where((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
+
+                    if (selectedDept != null &&
+                        d['departmentName'] != selectedDept) {
+                      return false;
+                    }
+                    return true;
+                  }).toList();
+
+                  /// SORT
+                  list.sort((a, b) {
+                    final x = a.data() as Map<String, dynamic>;
+                    final y = b.data() as Map<String, dynamic>;
+
+                    switch (sortOrder) {
+                      case "name_a_z":
+                        return x['categoryName']
+                            .toString()
+                            .compareTo(y['categoryName']);
+
+                      case "name_z_a":
+                        return y['categoryName']
+                            .toString()
+                            .compareTo(x['categoryName']);
+
+                      case "priority_high_low":
+                        return _p(y['priority']).compareTo(_p(x['priority']));
+
+                      case "priority_low_high":
+                        return _p(x['priority']).compareTo(_p(y['priority']));
+
+                      case "date_new_old":
+                        return (y['createdAt'] as Timestamp)
+                            .compareTo(x['createdAt']);
+
+                      case "date_old_new":
+                        return (x['createdAt'] as Timestamp)
+                            .compareTo(y['createdAt']);
+                    }
+                    return 0;
+                  });
+
+                  if (list.isEmpty) {
+                    return const Center(child: Text("No complaints"));
+                  }
+
+                  return ListView.builder(
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final d = list[index].data() as Map<String, dynamic>;
+                      final id = list[index].id;
+
+                      return Card(
+                        child: ListTile(
+                          title: Text(
+                            d['categoryName'] ?? '',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                d['departmentName'] ?? '',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                d['priority'] ?? '',
+                                style: TextStyle(
+                                  color: _color(d['priority']),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          /// ✅ FIXED NAVIGATION (THIS WAS YOUR MAIN BUG)
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.complaintDetail,
+                              arguments: id, // 🔥 MUST BE ID
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -121,182 +194,57 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
     );
   }
 
-  /// ---------------- FILTER DROPDOWN ----------------
-  Widget _buildDepartmentFilter() {
-    return _styledDropdown(
+  /// ================= CLEAN BOX =================
+  Widget _box(Widget child) {
+    return Container(
+      height: 45,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: child,
+    );
+  }
+
+  /// ================= FILTER =================
+  Widget _deptDropdown() {
+    return DropdownButton<String>(
+      isExpanded: true,
       value: selectedDept,
-      hint: "Filter",
+      hint: const Text("Dept"),
+      underline: const SizedBox(),
       items: [
-        const DropdownMenuItem<String>(
-          value: null,
-          child:
-              SizedBox(width: double.infinity, child: Text("All Departments")),
-        ),
-        ...departments.map(
-          (d) => DropdownMenuItem<String>(
-            value: d,
-            child: SizedBox(
-              width: double.infinity,
-              child: Text(d, softWrap: true),
-            ),
-          ),
-        ),
+        const DropdownMenuItem(value: null, child: Text("All")),
+        ...departments.map((d) => DropdownMenuItem(
+              value: d,
+              child: Text(d, overflow: TextOverflow.ellipsis),
+            )),
       ],
-      onChanged: (val) => setState(() => selectedDept = val),
+      onChanged: (v) => setState(() => selectedDept = v),
     );
   }
 
-  /// ---------------- SORT DROPDOWN ----------------
-  Widget _buildSortDropdown() {
-    return _styledDropdown(
+  /// ================= SORT =================
+  Widget _sortDropdown() {
+    return DropdownButton<String>(
+      isExpanded: true,
       value: sortOrder,
-      hint: "Sort",
+      hint: const Text("Sort"),
+      underline: const SizedBox(),
       items: sortOptions
-          .map(
-            (o) => DropdownMenuItem<String>(
-              value: o['value'],
-              child: SizedBox(
-                width: double.infinity,
-                child: Text(o['label']!, softWrap: true),
-              ),
-            ),
-          )
+          .map((o) => DropdownMenuItem(
+                value: o['value'],
+                child: Text(o['label']!),
+              ))
           .toList(),
-      onChanged: (val) => setState(() => sortOrder = val),
+      onChanged: (v) => setState(() => sortOrder = v),
     );
   }
 
-  /// ---------------- COMMON DROPDOWN STYLE ----------------
-  Widget _styledDropdown({
-    required String? value,
-    required String hint,
-    required List<DropdownMenuItem<String>> items,
-    required void Function(String?) onChanged,
-  }) {
-    return DropdownButtonHideUnderline(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: value,
-          hint: Text(hint, overflow: TextOverflow.ellipsis),
-          menuMaxHeight: 300,
-          style: const TextStyle(color: Colors.black),
-          items: items,
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  /// ---------------- COMPLAINT CARD ----------------
-  Widget _complaintCard(Map<String, dynamic> complaint) {
-    final Color priorityColor = _priorityColor(complaint['priority']);
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      elevation: 3,
-      child: ListTile(
-        title: Text(complaint["title"],
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Container(
-          margin: const EdgeInsets.only(top: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: priorityColor.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(complaint['priority'],
-              style:
-                  TextStyle(color: priorityColor, fontWeight: FontWeight.bold)),
-        ),
-        trailing: complaint['status'] == "Pending"
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _actionButton("Approve", Colors.green, complaint),
-                  const SizedBox(width: 8),
-                  _actionButton("Reject", Colors.red, complaint),
-                ],
-              )
-            : null,
-        onTap: () => Navigator.pushNamed(
-          context,
-          AppRoutes.complaintDetail,
-          arguments: complaint,
-        ),
-      ),
-    );
-  }
-
-  /// ---------------- ACTION BUTTON WITH DIALOG ----------------
-  Widget _actionButton(
-      String text, Color color, Map<String, dynamic> complaint) {
-    return ElevatedButton(
-      onPressed: () => _showActionDialog(text, complaint),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-      ),
-      child: Text(text, style: const TextStyle(fontSize: 12)),
-    );
-  }
-
-  void _showActionDialog(String action, Map<String, dynamic> complaint) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("$action Complaint",
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text("Are you sure you want to $action this complaint?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: action == "Approve" ? Colors.green : Colors.red,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Complaint $action successfully"),
-                  backgroundColor:
-                      action == "Approve" ? Colors.green : Colors.red,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: const Text("Confirm", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _priorityColor(String priority) {
-    switch (priority) {
-      case "High":
-        return Colors.red;
-      case "Medium":
-        return Colors.orange;
-      case "Low":
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  int _priorityValue(String priority) {
-    switch (priority) {
+  int _p(String p) {
+    switch (p) {
       case "Low":
         return 1;
       case "Medium":
@@ -305,6 +253,17 @@ class _ComplaintListScreenState extends State<ComplaintListScreen> {
         return 3;
       default:
         return 0;
+    }
+  }
+
+  Color _color(String p) {
+    switch (p) {
+      case "High":
+        return Colors.red;
+      case "Medium":
+        return Colors.orange;
+      default:
+        return Colors.green;
     }
   }
 }

@@ -32,7 +32,6 @@ Drawer adminDrawer(BuildContext context) {
             ],
           ),
         ),
-
         drawerItem(
           context,
           Icons.apartment,
@@ -105,7 +104,7 @@ BottomNavigationBar adminBottomNav(BuildContext context, int currentIndex) {
           Navigator.pushReplacementNamed(context, AppRoutes.reportsMenu);
           break;
         case 3:
-          Navigator.pushReplacementNamed(context, AppRoutes.settings);
+          Navigator.pushReplacementNamed(context, AppRoutes.profile);
           break;
       }
     },
@@ -113,7 +112,7 @@ BottomNavigationBar adminBottomNav(BuildContext context, int currentIndex) {
       BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Dashboard"),
       BottomNavigationBarItem(icon: Icon(Icons.report), label: "Complaints"),
       BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Reports"),
-      BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+      BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Profile"),
     ],
   );
 }

@@ -11,7 +11,7 @@ class DepartmentReportsScreen extends StatefulWidget {
 }
 
 class _DepartmentReportsScreenState extends State<DepartmentReportsScreen> {
-  final int _currentIndex = 2;
+  final int _currentIndex = 3;
 
   static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);

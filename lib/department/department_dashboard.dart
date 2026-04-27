@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'department_navigation.dart';
 import 'department_routes.dart';
+import '../services/departmentComplaintService.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/complaint.dart';
+import '../services/department_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/department_provider.dart';
 
 class DepartmentDashboard extends StatefulWidget {
   const DepartmentDashboard({super.key});
@@ -10,23 +17,73 @@ class DepartmentDashboard extends StatefulWidget {
 }
 
 class _DepartmentDashboardState extends State<DepartmentDashboard> {
-  final String departmentName = "Sanitation Department";
-  final int _currentIndex = 0;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  int _currentIndex = 0;
 
-  static const Color primaryBlue = Color(0xFF0A1F44); // navy blue
+  String departmentName = "Loading...";
+  List<Complaint> complaints = [];
+
+  int newCount = 0;
+  int activeCount = 0;
+  int progressCount = 0;
+  int resolvedCount = 0;
+
+  bool isLoading = true;
+
+  static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);
 
   @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadDashboardData();
+    });
+  }
+
+  Future<void> loadDashboardData() async {
+    try {
+      final departmentId =
+          context.read<DepartmentProvider>().departmentId;
+
+      if (departmentId == null) return;
+
+      departmentName =
+          await DepartmentService().getDepartmentName(departmentId);
+
+      complaints = await DepartmentComplaintService()
+          .getAssignedComplaints(departmentId);
+
+      setState(() {
+        newCount =
+            complaints.where((c) => c.status == "Pending").length;
+        activeCount =
+            complaints.where((c) => c.status == "Approved").length;
+        progressCount =
+            complaints.where((c) => c.status == "InProgress").length;
+        resolvedCount =
+            complaints.where((c) => c.status == "Resolved").length;
+
+        isLoading = false;
+      });
+    } catch (e) {
+      print(e);
+      setState(() => isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<DepartmentProvider>();
+
     return Scaffold(
       backgroundColor: lightGrey,
 
       /// ---------------- AppBar ----------------
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           departmentName,
           style: const TextStyle(
@@ -39,124 +96,169 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
         elevation: 0,
       ),
 
-      /// ---------------- Drawer ----------------
-      // drawer: departmentDrawer(context),
-
       /// ---------------- Body ----------------
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// ---- Section: Overview ----
-            const Text(
-              "Overview",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              physics: const NeverScrollableScrollPhysics(),
-              children: const [
-                DashboardCard(
-                  title: "New",
-                  count: "2",
-                  color: Color(0xFFFFA726),
-                ),
-                DashboardCard(
-                  title: "Active",
-                  count: "2",
-                  color: Color(0xFF1E88E5),
-                ),
-                DashboardCard(
-                  title: "In Progress",
-                  count: "5",
-                  color: Color(0xFF43A047),
-                ),
-                DashboardCard(
-                  title: "Resolved",
-                  count: "14",
-                  color: Color(0xFF00897B),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 28),
-
-            /// ---- Section: Recent Complaints ----
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Recent Complaints",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: primaryBlue,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, DepartmentRoutes.list);
-                  },
-                  child: const Text(
-                    "View All",
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// ---- Section: Overview ----
+                  const Text(
+                    "Overview",
                     style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: primaryBlue,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-            ComplaintCard(
-              title: "Broken Streetlight",
-              location: "123 Main Street, Udaipur",
-              date: "1/3/2026",
-              status: "Approved",
-              priority: "Medium",
-              priorityColor: Colors.amber,
-              onTap: () {
-                Navigator.pushNamed(context, DepartmentRoutes.complaintDetail);
-              },
+                  GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      DashboardCard(
+                        title: "New",
+                        count: newCount.toString(),
+                        color: const Color(0xFFFFA726),
+                      ),
+                      DashboardCard(
+                        title: "Active",
+                        count: activeCount.toString(),
+                        color: const Color(0xFF1E88E5),
+                      ),
+                      DashboardCard(
+                        title: "In Progress",
+                        count: progressCount.toString(),
+                        color: const Color(0xFF43A047),
+                      ),
+                      DashboardCard(
+                        title: "Resolved",
+                        count: resolvedCount.toString(),
+                        color: const Color(0xFF00897B),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  /// ---- Section: Manage Users (officers only) ----
+                  if (provider.isOfficer) ...[
+                    const Text(
+                      "Administration",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.group_add,
+                              color: primaryBlue, size: 26),
+                        ),
+                        title: const Text(
+                          "Manage Department Users",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: primaryBlue,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "Create and manage users in your department",
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: primaryBlue),
+                        onTap: () {
+                          Navigator.pushNamed(
+                              context, DepartmentRoutes.manageUsers);
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+                  ],
+
+                  /// ---- Section: Recent Complaints ----
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Recent Complaints",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, DepartmentRoutes.list);
+                        },
+                        child: const Text(
+                          "View All",
+                          style: TextStyle(
+                            color: primaryBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  ...complaints.take(3).map((c) {
+                    return ComplaintCard(
+                      title: c.categoryName,
+                      location: c.location,
+                      date: c.createdAt?.toString().split(" ")[0] ?? "",
+                      status: c.status,
+                      priority: c.priority,
+                      priorityColor:
+                          c.priority == "High" ? Colors.red : Colors.amber,
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          DepartmentRoutes.complaintDetail,
+                          arguments: {
+                            'complaintId': c.complaintId,
+                            'source': 'dashboard',
+                          },
+                        );
+                      },
+                    );
+                  }).toList(),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            ComplaintCard(
-              title: "Pothole on Main Street",
-              location: "Lexton Street, XYZ",
-              date: "12/23/2025",
-              status: "Approved",
-              priority: "High",
-              priorityColor: Colors.red,
-              onTap: () {
-                Navigator.pushNamed(context, DepartmentRoutes.complaintDetail);
-              },
-            ),
-            const SizedBox(height: 8),
-            ComplaintCard(
-              title: "Water Leakage Issue",
-              location: "Sector 10, Near Market",
-              date: "12/20/2025",
-              status: "In Progress",
-              priority: "High",
-              priorityColor: Colors.red,
-              onTap: () {
-                Navigator.pushNamed(context, DepartmentRoutes.complaintDetail);
-              },
-            ),
-          ],
-        ),
-      ),
 
       /// ---------------- Bottom Nav ----------------
       bottomNavigationBar: departmentBottomNav(context, _currentIndex),
@@ -243,7 +345,7 @@ class ComplaintCard extends StatelessWidget {
     switch (status) {
       case "Approved":
         return Colors.green;
-      case "In Progress":
+      case "InProgress":
         return Colors.blue;
       case "Resolved":
         return Colors.teal;
@@ -312,7 +414,8 @@ class ComplaintCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       location,
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],

@@ -238,31 +238,73 @@ Future<String> _getAddressFromLatLng(LatLng latLng) async {
     }
   }
 
-  // 🔥 Load categories from Firestore
-  Future<void> _loadCategories() async {
-    try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
+// 🔥 Load categories from Firestore (Fixed)
+Future<void> _loadCategories() async {
+  try {
+    setState(() {
+      _isLoadingCategories = true;
+    });
+    
+    // Query sirf active status wali categories ke liye
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('categories')
+        .where('status', isEqualTo: 'active')
+        .get();
+    
+    print('🔍 Total active categories found: ${snapshot.docs.length}'); // Debug
+    
+    if (snapshot.docs.isEmpty) {
+      print('⚠️ No active categories found with where clause');
+      print('💡 Trying alternative query...');
+      
+      // Alternative: Get all and filter manually
+      QuerySnapshot allDocs = await FirebaseFirestore.instance
           .collection('categories')
-          .orderBy('name')
           .get();
       
-      setState(() {
-        _categories = snapshot.docs.map((doc) {
-          return {
+      print('📊 Total categories in DB: ${allDocs.docs.length}');
+      
+      List<Map<String, dynamic>> activeCategories = [];
+      for (var doc in allDocs.docs) {
+        print('Document: ${doc.id}, Name: ${doc['name']}, Status: ${doc['status']}');
+        String status = doc['status'] ?? '';
+        if (status.toLowerCase() == 'active') {
+          activeCategories.add({
             'id': doc.id,
             'name': doc['name'],
-          };
-        }).toList();
-        _isLoadingCategories = false;
-      });
-    } catch (e) {
-      print('Error loading categories: $e');
+          });
+        }
+      }
+      
+      print('✅ Manually filtered active categories: ${activeCategories.length}');
+      
       setState(() {
+        _categories = activeCategories;
         _isLoadingCategories = false;
       });
+      return;
     }
+    
+    setState(() {
+      _categories = snapshot.docs.map((doc) {
+        print('✅ Loading category: ${doc['name']}'); // Debug each category
+        return {
+          'id': doc.id,
+          'name': doc['name'],
+        };
+      }).toList();
+      _isLoadingCategories = false;
+    });
+    
+    print('🎯 Final categories count: ${_categories.length}');
+    
+  } catch (e) {
+    print('❌ Error loading categories: $e');
+    setState(() {
+      _isLoadingCategories = false;
+    });
   }
-
+}
   @override
   void dispose() {
     _mapController?.dispose();

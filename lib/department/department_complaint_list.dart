@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'department_navigation.dart';
 import 'department_routes.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/departmentComplaintService.dart';
+import '../models/complaint.dart';
+import 'package:provider/provider.dart';
+import '../providers/department_provider.dart';
 
 class DepartmentComplaintList extends StatefulWidget {
   const DepartmentComplaintList({super.key});
@@ -14,14 +19,17 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
   String selectedFilter = "All";
   String? sortOrder;
 
+  /// Set via route argument when navigating from Categories screen
+  String? categoryFilter;
+
   static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);
 
   final List<String> filters = [
     "All",
-    "New",
+    "Pending",
     "Approved",
-    "In Progress",
+    "InProgress",
     "Resolved",
   ];
 
@@ -32,56 +40,42 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
     {"value": "priority_high_low", "label": "Priority: High → Low"},
   ];
 
-  final List<Map<String, dynamic>> allComplaints = [
-    {
-      "title": "Broken Streetlight",
-      "location": "123 Main Street, Udaipur",
-      "date": DateTime(2026, 1, 3),
-      "status": "Approved",
-      "priority": "Medium",
-      "description": "Streetlight not working for 2 days",
-    },
-    {
-      "title": "Pothole on Main Street",
-      "location": "Lexton Street, XYZ",
-      "date": DateTime(2025, 12, 23),
-      "status": "Approved",
-      "priority": "High",
-      "description": "Large pothole causing traffic issues",
-    },
-    {
-      "title": "Water Leakage Issue",
-      "location": "Sector 10, Near Market",
-      "date": DateTime(2025, 12, 20),
-      "status": "In Progress",
-      "priority": "High",
-      "description": "Pipe leakage near main road",
-    },
-    {
-      "title": "Garbage Not Collected",
-      "location": "Park Avenue, Block C",
-      "date": DateTime(2026, 1, 5),
-      "status": "New",
-      "priority": "Medium",
-      "description": "Garbage bins not emptied for 3 days",
-    },
-    {
-      "title": "Drainage Problem",
-      "location": "Residential Area, Sector 5",
-      "date": DateTime(2025, 12, 15),
-      "status": "Resolved",
-      "priority": "Low",
-      "description": "Blocked drainage system",
-    },
-    {
-      "title": "Street Cleaning Required",
-      "location": "Market Street, Downtown",
-      "date": DateTime(2026, 1, 1),
-      "status": "New",
-      "priority": "Low",
-      "description": "Street needs thorough cleaning",
-    },
-  ];
+  List<Complaint> allComplaints = [];
+  bool isLoading = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['categoryFilter'] != null) {
+      categoryFilter = args['categoryFilter'];
+    }
+
+    if (isLoading) {
+      loadComplaints();
+    }
+  }
+
+  Future<void> loadComplaints() async {
+    try {
+      final departmentId =
+          context.read<DepartmentProvider>().departmentId;
+
+      if (departmentId == null) return;
+
+      final data = await DepartmentComplaintService()
+          .getAssignedComplaints(departmentId);
+
+      setState(() {
+        allComplaints = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      print(e);
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,168 +86,188 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
 
       /// ---------------- AppBar ----------------
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: categoryFilter != null,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          "Complaints",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          categoryFilter != null ? categoryFilter! : "Complaints",
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: primaryBlue,
         elevation: 0,
       ),
 
-      /// ---------------- Drawer ----------------
-    //   drawer: departmentDrawer(context),
-
       /// ---------------- Body ----------------
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// ---------------- FILTERS ----------------
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: filters.map((filter) {
-                  final bool isSelected = selectedFilter == filter;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(filter),
-                      selected: isSelected,
-                      selectedColor: primaryBlue,
-                      backgroundColor: lightGrey,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          selectedFilter = filter;
-                        });
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          /// ---------------- SORT DROPDOWN ----------------
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Sort by:",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: primaryBlue,
+                /// ---------------- STATUS FILTERS ----------------
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: filters.map((filter) {
+                        final bool isSelected = selectedFilter == filter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(filter),
+                            selected: isSelected,
+                            selectedColor: primaryBlue,
+                            backgroundColor: lightGrey,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            onSelected: (_) {
+                              setState(() {
+                                selectedFilter = filter;
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(child: _buildSortDropdown()),
+
+                /// ---------------- SORT DROPDOWN ----------------
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const Text(
+                        "Sort by:",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildSortDropdown()),
+                    ],
+                  ),
+                ),
+
+                /// ---------------- COUNT ----------------
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "${filteredComplaints.length} Complaint${filteredComplaints.length != 1 ? 's' : ''} Found",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: primaryBlue,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                /// ---------------- COMPLAINT LIST ----------------
+                Expanded(
+                  child: filteredComplaints.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                size: 80,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                "No complaints found",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredComplaints.length,
+                          itemBuilder: (context, index) {
+                            final complaint = filteredComplaints[index];
+
+                            return ComplaintCard(
+                              title: complaint.categoryName,
+                              location: complaint.location,
+                              date: complaint.createdAt
+                                      ?.toString()
+                                      .split(" ")[0] ??
+                                  "",
+                              status: complaint.status,
+                              priority: complaint.priority,
+                              priorityColor: _priorityColor(complaint.priority),
+                              onTap: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  DepartmentRoutes.complaintDetail,
+                                  arguments: {
+                                    'complaintId': complaint.complaintId,
+                                    'source': 'list',
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
               ],
             ),
-          ),
-
-          /// ---------------- COUNT ----------------
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              "${filteredComplaints.length} Complaint${filteredComplaints.length != 1 ? 's' : ''} Found",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          /// ---------------- COMPLAINT LIST ----------------
-          Expanded(
-            child: filteredComplaints.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.inbox_outlined,
-                          size: 80,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "No complaints found",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredComplaints.length,
-                    itemBuilder: (context, index) {
-                      final complaint = filteredComplaints[index];
-                      return ComplaintCard(
-                        title: complaint['title'],
-                        location: complaint['location'],
-                        date: _formatDate(complaint['date']),
-                        status: complaint['status'],
-                        priority: complaint['priority'],
-                        priorityColor: _priorityColor(complaint['priority']),
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            DepartmentRoutes.complaintDetail,
-                            arguments: complaint,
-                          );
-                        },
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
 
       /// ---------------- Bottom Nav ----------------
-      bottomNavigationBar: departmentBottomNav(context, 1),
+      bottomNavigationBar: departmentBottomNav(context, 2),
     );
   }
 
-  List<Map<String, dynamic>> _getFilteredComplaints() {
-    var complaints = allComplaints.where((c) {
-      if (selectedFilter == "All") return true;
-      return c['status'] == selectedFilter;
+  List<Complaint> _getFilteredComplaints() {
+    List<Complaint> complaints = allComplaints.where((c) {
+      // ---------------- STATUS FILTER ----------------
+      final statusMatch =
+          selectedFilter == "All" || c.status == selectedFilter;
+
+      // ---------------- CATEGORY FILTER (from Categories screen) ----------------
+      final categoryMatch =
+          categoryFilter == null || c.categoryName == categoryFilter;
+
+      return statusMatch && categoryMatch;
     }).toList();
 
+    // ---------------- SORTING ----------------
     if (sortOrder != null) {
       switch (sortOrder) {
         case "priority_low_high":
           complaints.sort((a, b) =>
-              _priorityValue(a['priority']).compareTo(_priorityValue(b['priority'])));
+              _priorityValue(a.priority).compareTo(_priorityValue(b.priority)));
           break;
+
         case "priority_high_low":
           complaints.sort((a, b) =>
-              _priorityValue(b['priority']).compareTo(_priorityValue(a['priority'])));
+              _priorityValue(b.priority).compareTo(_priorityValue(a.priority)));
           break;
+
         case "date_new_old":
           complaints.sort((a, b) =>
-              (b['date'] as DateTime).compareTo(a['date'] as DateTime));
+              (b.createdAt ?? DateTime.now())
+                  .compareTo(a.createdAt ?? DateTime.now()));
           break;
+
         case "date_old_new":
           complaints.sort((a, b) =>
-              (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+              (a.createdAt ?? DateTime.now())
+                  .compareTo(b.createdAt ?? DateTime.now()));
           break;
       }
     }
@@ -284,10 +298,6 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return "${date.month}/${date.day}/${date.year}";
   }
 
   Color _priorityColor(String priority) {
@@ -342,11 +352,11 @@ class ComplaintCard extends StatelessWidget {
     switch (status) {
       case "Approved":
         return Colors.green;
-      case "In Progress":
+      case "InProgress":
         return Colors.blue;
       case "Resolved":
         return Colors.teal;
-      case "New":
+      case "Pending":
         return Colors.orange;
       default:
         return Colors.grey;
@@ -412,7 +422,8 @@ class ComplaintCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       location,
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],
