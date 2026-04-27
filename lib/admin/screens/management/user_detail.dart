@@ -17,7 +17,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Map<String, dynamic>? user;
-  String? departmentName;
+  Map<String, dynamic>? department;
   bool loading = true;
 
   @override
@@ -26,7 +26,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     _loadUser();
   }
 
-  // ---------------- TIMESTAMP FORMAT ----------------
+  /// ---------------- FORMAT DATE ----------------
   String formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return "N/A";
 
@@ -40,25 +40,22 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       return "Invalid date";
     }
 
-    String day = DateFormat('EEEE').format(dateTime);
-    String date = DateFormat('yyyy-MM-dd').format(dateTime);
-    String time = DateFormat('HH:mm:ss').format(dateTime);
-
-    return "$day | $date | $time";
+    return DateFormat('EEEE | yyyy-MM-dd | HH:mm:ss').format(dateTime);
   }
 
+  /// ---------------- LOAD USER + DEPARTMENT ----------------
   Future<void> _loadUser() async {
     final doc = await _firestore.collection('users').doc(widget.userId).get();
 
     user = doc.data();
 
     if (user?['departmentId'] != null) {
-      final dept = await _firestore
+      final deptDoc = await _firestore
           .collection('departments')
           .doc(user!['departmentId'])
           .get();
 
-      departmentName = dept['name'];
+      department = deptDoc.data();
     }
 
     setState(() => loading = false);
@@ -74,8 +71,13 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
     final isOfficer = user?['userType'] == "department_officer";
 
+    final isActive = user?['isActive'] == true;
+    final deptActive = department?['status'] == "active";
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
+
+      /// ---------------- APP BAR ----------------
       appBar: AppBar(
         title: const Text(
           "User Details",
@@ -84,6 +86,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Container(
@@ -100,7 +103,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           ),
           child: Column(
             children: [
-              /// ---------------- PROFILE IMAGE ----------------
+              /// ---------------- PROFILE ----------------
               CircleAvatar(
                 radius: 50,
                 backgroundColor: primaryBlue,
@@ -115,7 +118,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
               const SizedBox(height: 16),
 
-              /// ---------------- NAME ----------------
               Text(
                 user?['name'] ?? "",
                 style: const TextStyle(
@@ -126,25 +128,20 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
               const SizedBox(height: 10),
 
-              /// ---------------- STATUS BADGE ----------------
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: user?['isActive'] == true
-                      ? Colors.green.withOpacity(0.2)
-                      : Colors.red.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  user?['isActive'] == true ? "Active" : "Inactive",
-                  style: TextStyle(
-                    color:
-                        user?['isActive'] == true ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              /// ---------------- USER STATUS ----------------
+              _statusBadge(
+                isActive ? "Active" : "Inactive",
+                isActive ? Colors.green : Colors.red,
               ),
+
+              const SizedBox(height: 10),
+
+              /// ---------------- DEPARTMENT STATUS ----------------
+              if (isOfficer)
+                _statusBadge(
+                  deptActive ? "Department Active" : "Department Inactive",
+                  deptActive ? Colors.green : Colors.red,
+                ),
 
               const SizedBox(height: 20),
 
@@ -152,8 +149,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               _infoTile(Icons.email, "Email", user?['email']),
               _infoTile(Icons.phone, "Phone", user?['phone']),
               _infoTile(Icons.person, "Role", user?['userType']),
-
-              /// ✅ FIXED CREATED AT FORMAT
               _infoTile(
                 Icons.date_range,
                 "Created At",
@@ -164,7 +159,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 _infoTile(
                   Icons.apartment,
                   "Department",
-                  departmentName ?? "N/A",
+                  department?['name'] ?? "N/A",
                 ),
             ],
           ),
@@ -173,8 +168,26 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     );
   }
 
-  /// ---------------- REUSABLE TILE ----------------
-  Widget _infoTile(IconData icon, String label, String? value) {
+  /// ---------------- STATUS BADGE ----------------
+  Widget _statusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  /// ---------------- INFO TILE ----------------
+  Widget _infoTile(IconData icon, String label, dynamic value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),

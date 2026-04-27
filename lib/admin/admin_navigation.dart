@@ -24,11 +24,6 @@ Drawer adminDrawer(BuildContext context) {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 6),
-              Text(
-                "admin@citycare.com",
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
             ],
           ),
         ),

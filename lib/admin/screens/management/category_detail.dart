@@ -14,7 +14,6 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   static const Color primaryBlue = Color(0xFF0A1F44);
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   final TextEditingController _nameController = TextEditingController();
 
   String? selectedDeptId;
@@ -29,13 +28,16 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     _loadData();
   }
 
+  // ---------------- LOAD ----------------
   Future<void> _loadData() async {
     final catDoc =
         await _firestore.collection('categories').doc(widget.categoryId).get();
 
-    _nameController.text = catDoc['name'];
-    selectedDeptId = catDoc['departmentId'];
-    status = catDoc['status'];
+    final data = catDoc.data() as Map<String, dynamic>;
+
+    _nameController.text = data['name'] ?? "";
+    selectedDeptId = data['departmentId'];
+    status = data['status'] ?? "inactive";
 
     final deptSnap = await _firestore.collection('departments').get();
     departments = deptSnap.docs;
@@ -43,7 +45,13 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     setState(() => loading = false);
   }
 
-  /// ---------------- SAVE NAME + DEPARTMENT ----------------
+  bool _isDeptActive(String id) {
+    final dept = departments.firstWhere((d) => d.id == id).data()
+        as Map<String, dynamic>;
+    return (dept['status'] ?? "inactive") == "active";
+  }
+
+  // ---------------- SAVE ----------------
   Future<void> _save() async {
     await _firestore.collection('categories').doc(widget.categoryId).update({
       "name": _nameController.text.trim(),
@@ -55,37 +63,136 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     );
   }
 
-  /// ---------------- ACTIVATE / DEACTIVATE ----------------
-  Future<void> _toggle() async {
-    final newStatus = status == "active" ? "inactive" : "active";
+  // ---------------- TOGGLE CATEGORY ----------------
+  Future<void> _toggleCategory() async {
+    if (selectedDeptId == null) return;
 
-    await _firestore.collection('categories').doc(widget.categoryId).update({
-      "status": newStatus,
-    });
-
-    // update department automatically
-    await _firestore
-        .collection('departments')
-        .doc(selectedDeptId)
-        .update({"status": newStatus});
-
-    // update officers
-    final users = await _firestore
-        .collection('users')
-        .where('departmentId', isEqualTo: selectedDeptId)
-        .get();
-
-    for (var u in users.docs) {
-      await u.reference.update({"isActive": newStatus == "active"});
+    // ❌ BLOCK IF DEPARTMENT INACTIVE
+    if (!_isDeptActive(selectedDeptId!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Activate department first"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
     }
 
+    final newStatus = status == "active" ? "inactive" : "active";
+
+    await _firestore
+        .collection('categories')
+        .doc(widget.categoryId)
+        .update({"status": newStatus});
+
     setState(() => status = newStatus);
+
+    // if last active category → deactivate department
+    if (newStatus == "inactive") {
+      final activeCats = await _firestore
+          .collection('categories')
+          .where('departmentId', isEqualTo: selectedDeptId)
+          .where('status', isEqualTo: "active")
+          .get();
+
+      if (activeCats.docs.isEmpty) {
+        await _deactivateDepartment(selectedDeptId!);
+      }
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Category $newStatus")),
     );
   }
 
+  // ---------------- DEACTIVATE DEPARTMENT ----------------
+  Future<void> _deactivateDepartment(String deptId) async {
+    await _firestore.collection('departments').doc(deptId).update({
+      "status": "inactive",
+    });
+
+    final users = await _firestore
+        .collection('users')
+        .where('departmentId', isEqualTo: deptId)
+        .get();
+
+    for (var u in users.docs) {
+      await u.reference.update({"isActive": false});
+    }
+  }
+
+  // ---------------- DROPDOWN ----------------
+  Widget _departmentDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedDeptId,
+          isExpanded: true,
+          hint: const Text("Select Department"),
+          items: departments.map((d) {
+            final data = d.data() as Map<String, dynamic>;
+            final isActive = (data['status'] ?? "inactive") == "active";
+
+            return DropdownMenuItem(
+              value: d.id,
+
+              // ❌ DISABLE INACTIVE DEPARTMENTS
+              enabled: isActive,
+
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.apartment,
+                    size: 18,
+                    color: isActive ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      data['name'],
+                      style: TextStyle(
+                        color: isActive ? Colors.black : Colors.grey,
+                      ),
+                    ),
+                  ),
+                  if (!isActive)
+                    const Text(
+                      "Inactive",
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    )
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value == null) return;
+
+            if (!_isDeptActive(value)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Activate department first"),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+
+            setState(() {
+              selectedDeptId = value;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -95,12 +202,13 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F6F8),
       appBar: AppBar(
         title: const Text("Category Detail"),
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -108,6 +216,9 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               controller: _nameController,
               decoration: InputDecoration(
                 labelText: "Category Name",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.save),
                   onPressed: _save,
@@ -115,29 +226,20 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              value: selectedDeptId,
-              items: departments.map((d) {
-                return DropdownMenuItem(
-                  value: d.id,
-                  child: Text(d['name']),
-                );
-              }).toList(),
-              onChanged: (val) {
-                setState(() => selectedDeptId = val);
-              },
-              decoration: const InputDecoration(
-                labelText: "Department",
-              ),
-            ),
+            _departmentDropdown(),
             const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: status == "active" ? Colors.red : Colors.green,
-              ),
-              onPressed: _toggle,
-              child: Text(
-                status == "active" ? "Deactivate" : "Activate",
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      status == "active" ? Colors.red : Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: _toggleCategory,
+                child: Text(
+                  status == "active" ? "Deactivate" : "Activate",
+                ),
               ),
             ),
           ],

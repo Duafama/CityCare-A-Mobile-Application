@@ -14,15 +14,16 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
   static const Color primaryBlue = Color(0xFF0A1F44);
 
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
 
   final CategoryService _categoryService = CategoryService();
   final DepartmentService _departmentService = DepartmentService();
 
-  List<Department> _departments = [];
-  String? _selectedDepartmentId;
-  bool _loading = true;
-  bool _saving = false;
+  List<Department> departments = [];
+  String? selectedDeptId;
+
+  bool loading = true;
+  bool saving = false;
 
   @override
   void initState() {
@@ -37,10 +38,9 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
   }
 
   // ---------------- VALIDATION ----------------
-
   String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return "Enter name";
+      return "Enter category name";
     }
     if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value)) {
       return "Only letters allowed";
@@ -48,39 +48,49 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
     return null;
   }
 
-  // ---------------- LOAD DEPARTMENTS ----------------
+  // ---------------- LOAD ----------------
+  Future<void> _loadDepartments() async {
+    try {
+      final data = await _departmentService.getAllDepartments();
 
-  void _loadDepartments() async {
-    final data = await _departmentService.getInactiveDepartments();
-    setState(() {
-      _departments = data;
-      _loading = false;
-    });
+      setState(() {
+        departments = data;
+        loading = false;
+      });
+    } catch (e) {
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error loading departments: $e")),
+      );
+    }
+  }
+
+  bool _isActive(String id) {
+    return departments.firstWhere((d) => d.id == id).status == "active";
   }
 
   // ---------------- SUBMIT ----------------
-
-  void _submit() async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedDepartmentId == null) {
+    if (selectedDeptId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a department")),
       );
       return;
     }
 
-    setState(() => _saving = true);
+    setState(() => saving = true);
 
     try {
       await _categoryService.addCategory(
         name: _nameController.text.trim(),
-        departmentId: _selectedDepartmentId!,
+        departmentId: selectedDeptId!,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Category added successfully"),
+          content: Text("Category created successfully"),
           backgroundColor: Colors.green,
         ),
       );
@@ -92,14 +102,87 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
       );
     }
 
-    setState(() => _saving = false);
+    setState(() => saving = false);
+  }
+
+  // ---------------- DROPDOWN ----------------
+  Widget _departmentDropdown() {
+    return DropdownButtonFormField<String>(
+      value: selectedDeptId,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: "Select Department",
+        prefixIcon: Icon(Icons.apartment, color: primaryBlue),
+        border: OutlineInputBorder(),
+      ),
+
+      items: departments.map((dept) {
+        final isActive = dept.status == "active";
+
+        return DropdownMenuItem<String>(
+          value: dept.id,
+
+          // ❌ DISABLE INACTIVE ITEMS VISUALLY
+          enabled: isActive,
+
+          child: Row(
+            children: [
+              Icon(
+                Icons.circle,
+                size: 10,
+                color: isActive ? Colors.green : Colors.red,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  dept.name,
+                  style: TextStyle(
+                    color: isActive ? Colors.black : Colors.grey,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isActive ? "Active" : "Inactive",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive ? Colors.green : Colors.red,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+
+      // ---------------- BLOCK INACTIVE SELECTION ----------------
+      onChanged: (value) {
+        if (value == null) return;
+
+        final dept = departments.firstWhere((d) => d.id == value);
+
+        if (dept.status != "active") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("This department is inactive. Activate it first."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        setState(() {
+          selectedDeptId = value;
+        });
+      },
+
+      validator: (val) => val == null ? "Select department" : null,
+    );
   }
 
   // ---------------- UI ----------------
-
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -110,116 +193,69 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
       appBar: AppBar(
         title: const Text(
           "Add Category",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        centerTitle: true,
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Category Information",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: "Category Name",
+                  prefixIcon: Icon(Icons.category, color: primaryBlue),
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Category Information",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Category Name
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: "Category Name",
-                    prefixIcon: Icon(Icons.category, color: primaryBlue),
-                  ),
-                  validator: _validateName,
-                ),
-
-                const SizedBox(height: 24),
-
-                const Text(
-                  "Department Selection",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Department Dropdown
-                DropdownButtonFormField<String>(
-                  value: _selectedDepartmentId,
-                  items: _departments.map((d) {
-                    return DropdownMenuItem(
-                      value: d.id,
-                      child: Text(d.name),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedDepartmentId = value;
-                    });
-                  },
-                  decoration: const InputDecoration(
-                    labelText: "Select Department",
-                    prefixIcon: Icon(Icons.apartment, color: primaryBlue),
-                  ),
-                  validator: (value) =>
-                      value == null ? "Select department" : null,
-                ),
-
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                validator: _validateName,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Department Selection",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              _departmentDropdown(),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    onPressed: _saving ? null : _submit,
-                    child: _saving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            "Create Category",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
                   ),
+                  onPressed: saving ? null : _submit,
+                  child: saving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Create Category",
+                          style: TextStyle(color: Colors.white),
+                        ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

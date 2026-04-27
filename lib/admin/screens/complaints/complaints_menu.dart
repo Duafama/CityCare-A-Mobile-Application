@@ -52,7 +52,6 @@ class _ComplaintsMenuScreenState extends State<ComplaintsMenuScreen> {
 
       /// ✅ AppBar WITHOUT back button
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         title: const Text(
           "Complaints",
           style: TextStyle(
@@ -63,6 +62,8 @@ class _ComplaintsMenuScreenState extends State<ComplaintsMenuScreen> {
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
+
+      drawer: adminDrawer(context),
 
       /// ✅ Body
       body: Padding(

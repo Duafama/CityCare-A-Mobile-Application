@@ -20,16 +20,7 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
   final TextEditingController _nameController = TextEditingController();
 
   String deptStatus = "active";
-
-  /// ---------------- LOAD DATA ----------------
-  Future<void> _loadDepartment() async {
-    final doc =
-        await _firestore.collection('departments').doc(widget.deptId).get();
-
-    _nameController.text = doc['name'];
-    deptStatus = doc['status'] ?? "active";
-    setState(() {});
-  }
+  bool loading = true;
 
   @override
   void initState() {
@@ -37,21 +28,28 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
     _loadDepartment();
   }
 
-  /// ---------------- UPDATE NAME ----------------
+  Future<void> _loadDepartment() async {
+    final doc =
+        await _firestore.collection('departments').doc(widget.deptId).get();
+
+    final data = doc.data() as Map<String, dynamic>?;
+
+    _nameController.text = data?['name'] ?? "";
+    deptStatus = data?['status'] ?? "active";
+
+    setState(() => loading = false);
+  }
+
   Future<void> _updateName() async {
     await _firestore.collection('departments').doc(widget.deptId).update({
       "name": _nameController.text.trim(),
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Name updated"),
-        backgroundColor: Colors.green,
-      ),
+      const SnackBar(content: Text("Name updated")),
     );
   }
 
-  /// ---------------- TOGGLE STATUS ----------------
   Future<void> _toggleDepartment() async {
     final newStatus = deptStatus == "active" ? "inactive" : "active";
 
@@ -59,44 +57,37 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
       "status": newStatus,
     });
 
-    // officers update
+    // update users
     final users = await _firestore
         .collection('users')
         .where('departmentId', isEqualTo: widget.deptId)
         .get();
 
     for (var u in users.docs) {
-      await u.reference.update({
-        "isActive": newStatus == "active",
-      });
+      await u.reference.update({"isActive": newStatus == "active"});
     }
 
-    // categories update
+    // update categories
     final cats = await _firestore
         .collection('categories')
         .where('departmentId', isEqualTo: widget.deptId)
         .get();
 
     for (var c in cats.docs) {
-      await c.reference.update({
-        "status": newStatus,
-      });
+      await c.reference.update({"status": newStatus});
     }
 
-    setState(() {
-      deptStatus = newStatus;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Department $newStatus"),
-        backgroundColor: Colors.green,
-      ),
-    );
+    setState(() => deptStatus = newStatus);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
       appBar: AppBar(
@@ -107,93 +98,155 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            /// ---------------- NAME EDIT ----------------
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: "Department Name",
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.save),
-                  onPressed: _updateName,
-                ),
+        children: [
+          // ================= NAME =================
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: "Department Name",
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.save),
+                onPressed: _updateName,
               ),
             ),
+          ),
 
-            const SizedBox(height: 20),
+          const SizedBox(height: 15),
 
-            /// ---------------- STATUS BUTTON ----------------
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      deptStatus == "active" ? Colors.red : Colors.green,
-                ),
-                onPressed: _toggleDepartment,
-                child: Text(
-                  deptStatus == "active" ? "Deactivate" : "Activate",
-                ),
-              ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  deptStatus == "active" ? Colors.red : Colors.green,
             ),
-
-            const SizedBox(height: 20),
-
-            /// ---------------- OFFICERS LIST ----------------
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Officers",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+            onPressed: _toggleDepartment,
+            child: Text(
+              deptStatus == "active" ? "Deactivate" : "Activate",
             ),
+          ),
 
-            const SizedBox(height: 10),
+          const SizedBox(height: 25),
 
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _firestore
-                    .collection('users')
-                    .where('departmentId', isEqualTo: widget.deptId)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+          // ================= OFFICERS =================
+          const Text(
+            "Officers",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
 
-                  final users = snapshot.data!.docs;
+          const SizedBox(height: 10),
 
-                  if (users.isEmpty) {
-                    return const Center(child: Text("No officers found"));
-                  }
+          StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('users')
+                .where('departmentId', isEqualTo: widget.deptId)
+                .where('userType', isEqualTo: 'department_officer')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
 
-                  return ListView.builder(
-                    itemCount: users.length,
-                    itemBuilder: (context, index) {
-                      final u = users[index];
+              final docs = snapshot.data!.docs;
 
-                      final isActive = u['isActive'] ?? true;
+              return Column(
+                children: docs.map((u) {
+                  final isActive = u['isActive'] ?? false;
 
-                      return ListTile(
-                        leading: const Icon(Icons.person),
-                        title: Text(u['name'] ?? "Unknown"),
-                        trailing: Text(
-                          isActive ? "Active" : "Inactive",
-                          style: TextStyle(
-                            color: isActive ? Colors.green : Colors.red,
-                          ),
-                        ),
-                      );
-                    },
+                  return ListTile(
+                    leading: const Icon(Icons.person),
+                    title: Text(u['name'] ?? ""),
+                    subtitle: const Text("Officer"),
+                    trailing: Text(
+                      isActive ? "Active" : "Inactive",
+                      style: TextStyle(
+                        color: isActive ? Colors.green : Colors.red,
+                      ),
+                    ),
                   );
-                },
-              ),
-            ),
-          ],
-        ),
+                }).toList(),
+              );
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          // ================= DEPARTMENT USERS =================
+          const Text(
+            "Department Users",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 10),
+
+          StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('users')
+                .where('departmentId', isEqualTo: widget.deptId)
+                .where('userType', isEqualTo: 'departmentUser')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+
+              final docs = snapshot.data!.docs;
+
+              return Column(
+                children: docs.map((u) {
+                  final isActive = u['isActive'] ?? false;
+
+                  return ListTile(
+                    leading: const Icon(Icons.group),
+                    title: Text(u['name'] ?? ""),
+                    subtitle: const Text("Department User"),
+                    trailing: Text(
+                      isActive ? "Active" : "Inactive",
+                      style: TextStyle(
+                        color: isActive ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          // ================= CATEGORIES =================
+          const Text(
+            "Categories",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 10),
+
+          StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('categories')
+                .where('departmentId', isEqualTo: widget.deptId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+
+              final docs = snapshot.data!.docs;
+
+              return Column(
+                children: docs.map((c) {
+                  final status = c['status'] ?? "inactive";
+
+                  return ListTile(
+                    leading: const Icon(Icons.category),
+                    title: Text(c['name'] ?? ""),
+                    trailing: Text(
+                      status,
+                      style: TextStyle(
+                        color: status == "active" ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

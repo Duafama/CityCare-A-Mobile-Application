@@ -59,7 +59,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   }
 
   Future<void> _updateDepartment(String deptName) async {
-    // 🔥 get departmentId first
     final deptSnap = await FirebaseFirestore.instance
         .collection('departments')
         .where('name', isEqualTo: deptName)
@@ -70,7 +69,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
     final deptId = deptSnap.docs.first.id;
 
-    // 🔥 find category using departmentId (NOT name)
     final catSnap = await FirebaseFirestore.instance
         .collection('categories')
         .where('departmentId', isEqualTo: deptId)
@@ -85,7 +83,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       newCategoryId = catSnap.docs.first.id;
     }
 
-    // 🔥 update Firestore properly
     await FirebaseFirestore.instance
         .collection('complaints')
         .doc(docId)
@@ -96,7 +93,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       "categoryId": newCategoryId,
     });
 
-    // 🔥 update UI
     setState(() {
       selectedDept = deptName;
       data!['departmentName'] = deptName;
@@ -127,6 +123,46 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
+  /// 🔥 FULL SCREEN IMAGE VIEW
+  void _openImage(String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Image.network(url),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 🔥 IMAGE ITEM
+  Widget _imageItem(String url) {
+    return GestureDetector(
+      onTap: () => _openImage(url),
+      child: Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            url,
+            width: 100,
+            height: 100,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -138,12 +174,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final isPending = data!['status'] == "Pending";
     final isOther = data!['categoryName'] == "Other";
 
-    final images = List<String>.from(data!['beforeImages'] ?? []);
+    final beforeImages = List<String>.from(data!['beforeImages'] ?? []);
+    final afterImages = List<String>.from(data!['afterImages'] ?? []);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
 
-      /// ✅ APPBAR FIX (WHITE ARROW)
+      /// ---------------- AppBar ----------------
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A1F44),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -158,13 +195,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ================= CATEGORY =================
-            _card(
-              title: "Category",
-              value: data!['categoryName'] ?? '',
-            ),
+            _card(title: "Category", value: data!['categoryName'] ?? ''),
 
-            /// ================= DEPARTMENT =================
             _card(
               title: "Department",
               child: isPending
@@ -185,32 +217,27 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   : Text(data!['departmentName'] ?? ''),
             ),
 
-            /// ================= PRIORITY =================
             _card(
               title: "Priority",
               value: data!['priority'] ?? '',
               valueColor: _priorityColor(data!['priority']),
             ),
 
-            /// ================= DESCRIPTION =================
             _card(
               title: "Description",
               value: data!['description'] ?? '',
             ),
 
-            /// ================= ADDRESS =================
             _card(
               title: "Address",
               value: data!['location'] ?? '',
             ),
 
-            /// ================= CITIZEN =================
             _card(
               title: "Citizen",
               value: data!['citizenEmail'] ?? '',
             ),
 
-            /// ================= DATE =================
             _card(
               title: "Date",
               value:
@@ -219,10 +246,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
             const SizedBox(height: 10),
 
-            /// ================= IMAGES =================
-            if (images.isNotEmpty) ...[
+            /// ================= BEFORE IMAGES =================
+            if (beforeImages.isNotEmpty) ...[
               const Text(
-                "Images",
+                "Before Images",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -230,14 +257,27 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 height: 100,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: images.length,
-                  itemBuilder: (_, i) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(images[i]),
-                    ),
-                  ),
+                  itemCount: beforeImages.length,
+                  itemBuilder: (_, i) => _imageItem(beforeImages[i]),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+
+            /// ================= AFTER IMAGES =================
+            if (data!['status'] == "Resolved" && afterImages.isNotEmpty) ...[
+              const Text(
+                "After Images",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: afterImages.length,
+                  itemBuilder: (_, i) => _imageItem(afterImages[i]),
                 ),
               ),
             ],
@@ -285,7 +325,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
-  /// ================= UI CARD =================
+  /// ---------------- UI CARD ----------------
   Widget _card({
     required String title,
     String? value,

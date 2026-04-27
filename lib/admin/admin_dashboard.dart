@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_navigation.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -11,7 +12,7 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   final int _currentIndex = 0;
 
-  static const Color primaryBlue = Color(0xFF0A1F44); // navy blue
+  static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);
 
   @override
@@ -21,87 +22,121 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       /// ---------------- AppBar ----------------
       appBar: AppBar(
-        iconTheme: const IconThemeData(
-          color: Colors.white, // sidebar (hamburger) button color
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Admin Dashboard",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: primaryBlue,
-        elevation: 0,
       ),
 
       /// ---------------- Drawer ----------------
       drawer: adminDrawer(context),
 
       /// ---------------- Body ----------------
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// ---- Section: Overview ----
-            const Text(
-              "Overview",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('complaints').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              physics: const NeverScrollableScrollPhysics(),
-              children: const [
-                DashboardCard(
-                  title: "Pending",
-                  count: "12",
-                  color: Color(0xFFFFA726),
+          final docs = snapshot.data!.docs;
+
+          /// 🔥 STATUS COUNTS
+          int pending = 0;
+          int approved = 0;
+          int inProgress = 0;
+          int resolved = 0;
+
+          /// 🔥 DEPARTMENT COUNTS
+          Map<String, int> deptCounts = {};
+
+          for (var doc in docs) {
+            final data = doc.data() as Map<String, dynamic>;
+
+            final status = data['status'] ?? '';
+            final dept = data['departmentName'] ?? 'Unknown';
+
+            /// Count status
+            if (status == "Pending") pending++;
+            if (status == "Approved") approved++;
+            if (status == "In Progress") inProgress++;
+            if (status == "Resolved") resolved++;
+
+            /// Count departments
+            deptCounts[dept] = (deptCounts[dept] ?? 0) + 1;
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// ---- Overview ----
+                const Text(
+                  "Overview",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: primaryBlue,
+                  ),
                 ),
-                DashboardCard(
-                  title: "Approved",
-                  count: "30",
-                  color: Color(0xFF43A047),
+                const SizedBox(height: 12),
+
+                GridView.count(
+                  shrinkWrap: true,
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    DashboardCard(
+                      title: "Pending",
+                      count: pending.toString(),
+                      color: const Color(0xFFFFA726),
+                    ),
+                    DashboardCard(
+                      title: "Approved",
+                      count: approved.toString(),
+                      color: const Color(0xFF43A047),
+                    ),
+                    DashboardCard(
+                      title: "In Progress",
+                      count: inProgress.toString(),
+                      color: const Color(0xFF1E88E5),
+                    ),
+                    DashboardCard(
+                      title: "Resolved",
+                      count: resolved.toString(),
+                      color: const Color(0xFF00897B),
+                    ),
+                  ],
                 ),
-                DashboardCard(
-                  title: "In Progress",
-                  count: "18",
-                  color: Color(0xFF1E88E5),
+
+                const SizedBox(height: 28),
+
+                /// ---- Departments ----
+                const Text(
+                  "Department Summary",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: primaryBlue,
+                  ),
                 ),
-                DashboardCard(
-                  title: "Resolved",
-                  count: "40",
-                  color: Color(0xFF00897B),
+                const SizedBox(height: 12),
+
+                Column(
+                  children: deptCounts.entries.map((entry) {
+                    return departmentTile(entry.key, entry.value);
+                  }).toList(),
                 ),
               ],
             ),
-
-            const SizedBox(height: 28),
-
-            /// ---- Section: Departments ----
-            const Text(
-              "Department Summary",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            departmentTile("Sanitation", 15),
-            departmentTile("Roads", 22),
-            departmentTile("Water Supply", 18),
-            departmentTile("Electricity", 10),
-          ],
-        ),
+          );
+        },
       ),
 
       /// ---------------- Bottom Nav ----------------

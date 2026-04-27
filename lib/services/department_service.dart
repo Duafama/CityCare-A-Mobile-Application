@@ -6,6 +6,7 @@ class DepartmentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
+  // ================= ADD DEPARTMENT =================
   Future<String?> addDepartment({
     required String departmentName,
     required String officerName,
@@ -42,38 +43,51 @@ class DepartmentService {
     }
   }
 
+  // ================= GET ALL DEPARTMENTS (FIXED) =================
   Future<List<Department>> getAllDepartments() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('departments').get();
+    final snapshot = await _firestore.collection('departments').get();
 
     return snapshot.docs.map((doc) {
-      return Department(
-        id: doc.id,
-        name: doc['name'],
-      );
+      final data = doc.data();
+
+      return Department.fromMap(doc.id, data);
     }).toList();
   }
 
-  Future<String> getDepartmentName(String id) async {
-  final doc = await _firestore.collection('departments').doc(id).get();
+  // ================= GET ONLY ACTIVE DEPARTMENTS (RECOMMENDED) =================
+  Future<List<Department>> getActiveDepartments() async {
+    final snapshot = await _firestore
+        .collection('departments')
+        .where('status', isEqualTo: 'active')
+        .get();
 
-  if (!doc.exists || doc.data() == null) {
-    return "Department";
+    return snapshot.docs.map((doc) {
+      return Department.fromMap(doc.id, doc.data());
+    }).toList();
   }
 
-  final data = doc.data() as Map<String, dynamic>;
-
-  return data['name'] ?? "Department";
-  }
-
+  // ================= GET INACTIVE DEPARTMENTS =================
   Future<List<Department>> getInactiveDepartments() async {
     final snapshot = await _firestore
         .collection('departments')
         .where('status', isEqualTo: 'inactive')
         .get();
 
-    return snapshot.docs
-        .map((doc) => Department.fromMap(doc.id, doc.data()))
-        .toList();
+    return snapshot.docs.map((doc) {
+      return Department.fromMap(doc.id, doc.data());
+    }).toList();
+  }
+
+  // ================= GET DEPARTMENT NAME =================
+  Future<String> getDepartmentName(String id) async {
+    final doc = await _firestore.collection('departments').doc(id).get();
+
+    if (!doc.exists || doc.data() == null) {
+      return "Department";
+    }
+
+    final data = doc.data() as Map<String, dynamic>;
+
+    return data['name'] ?? "Department";
   }
 }
