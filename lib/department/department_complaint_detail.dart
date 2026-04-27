@@ -459,18 +459,18 @@ class _DepartmentComplaintDetailState
                     border: Border.all(color: Colors.teal.shade200),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Icon(Icons.check_circle, color: Colors.teal),
                       SizedBox(width: 10),
-                      Text(
-                        "This complaint has been resolved",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.teal,
+                      Expanded(
+                        child: Text(
+                          "This complaint has been resolved",
+                          softWrap: true,
                         ),
                       ),
                     ],
-                  ),
+                  )
                 ),
 
               const SizedBox(height: 28),
