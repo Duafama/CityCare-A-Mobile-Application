@@ -19,7 +19,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _replyController = TextEditingController();
   final ModerationService _moderation = ModerationService();
   late final User _currentUser;
-  String? _replyingToId;
+  String? _replyingToId;  // Which comment we are replying to
 
   final Set<String> _likedComments = {};
   final Map<String, String> _photoCache = {};
@@ -49,8 +49,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
     }
   }
 
-  Future<void> _submitComment({String? parentId}) async {
-    final text = parentId != null ? _replyController.text.trim() : _commentController.text.trim();
+  Future<void> _submitMainComment() async {
+    final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
     final bool isSafe = _moderation.isCommentSafe(text);
@@ -65,17 +65,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ Comment reported to admin.'), backgroundColor: Colors.orange),
       );
-      if (parentId != null) _replyController.clear();
-      else _commentController.clear();
+      _commentController.clear();
       return;
-    }
-
-    // 🔥 NESTED REPLY FIX: rootParentId track karo
-    String? rootParentId;
-    if (parentId != null) {
-      final parentDoc = await FirebaseFirestore.instance.collection('comments').doc(parentId).get();
-      final parentData = parentDoc.data();
-      rootParentId = parentData?['rootParentId'] ?? parentId;
     }
 
     final userPhoto = await _getUserPhoto(_currentUser.uid);
@@ -89,22 +80,63 @@ class _CommentsScreenState extends State<CommentsScreen> {
       createdAt: DateTime.now(),
       isFlagged: false,
       photoUrl: userPhoto ?? _currentUser.photoURL,
-      parentId: parentId,
-      rootParentId: rootParentId,
+      parentId: null,  // ✅ Main comment — parentId is null
       likes: 0,
     );
 
     await FirebaseFirestore.instance.collection('comments').doc(comment.id).set(comment.toJson());
 
-    if (parentId != null) {
-      _replyController.clear();
-      setState(() => _replyingToId = null);
-    } else {
-      _commentController.clear();
-    }
+    _commentController.clear();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('✅ Comment posted!'), backgroundColor: Colors.green),
+    );
+  }
+
+  Future<void> _submitReply() async {
+    final text = _replyController.text.trim();
+    if (text.isEmpty) return;
+    if (_replyingToId == null) return;
+
+    final bool isSafe = _moderation.isCommentSafe(text);
+    final complaintId = widget.complaint['complaintId'] ?? widget.complaint['id'];
+
+    if (!isSafe) {
+      await _moderation.flagCommentAndSave(
+        commentId: DateTime.now().millisecondsSinceEpoch.toString(),
+        commentText: text,
+        commenterId: _currentUser.uid,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ Reply reported to admin.'), backgroundColor: Colors.orange),
+      );
+      _replyController.clear();
+      setState(() => _replyingToId = null);
+      return;
+    }
+
+    final userPhoto = await _getUserPhoto(_currentUser.uid);
+
+    final reply = Comment(
+      id: FirebaseFirestore.instance.collection('comments').doc().id,
+      complaintId: complaintId,
+      userId: _currentUser.uid,
+      userName: _currentUser.displayName ?? _currentUser.email?.split('@').first ?? 'User',
+      text: text,
+      createdAt: DateTime.now(),
+      isFlagged: false,
+      photoUrl: userPhoto ?? _currentUser.photoURL,
+      parentId: _replyingToId,  // ✅ Reply — parentId is the comment we are replying to
+      likes: 0,
+    );
+
+    await FirebaseFirestore.instance.collection('comments').doc(reply.id).set(reply.toJson());
+
+    _replyController.clear();
+    setState(() => _replyingToId = null);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('✅ Reply posted!'), backgroundColor: Colors.green),
     );
   }
 
@@ -167,7 +199,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   return ListView.builder(
                     padding: const EdgeInsets.only(top: 8),
                     itemCount: comments.length,
-                    itemBuilder: (context, index) => _buildCommentTree(comments[index]),
+                    itemBuilder: (context, index) => _buildCommentWithReplies(comments[index]),
                   );
                 },
               ),
@@ -201,7 +233,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () => _submitComment(parentId: _replyingToId),
+                      onTap: _submitReply,
                       child: Container(
                         width: 40,
                         height: 40,
@@ -270,7 +302,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     ),
                     const SizedBox(width: 12),
                     InkWell(
-                      onTap: () => _submitComment(),
+                      onTap: _submitMainComment,
                       child: Container(
                         width: 40,
                         height: 40,
@@ -290,11 +322,85 @@ class _CommentsScreenState extends State<CommentsScreen> {
     );
   }
 
-  Widget _buildCommentTree(Comment comment) {
+  // ✅ One comment with its replies
+  Widget _buildCommentWithReplies(Comment comment) {
+    final isLiked = _likedComments.contains(comment.id);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildCommentTile(comment),
+        // Main comment tile
+        FutureBuilder<String?>(
+          future: _getUserPhoto(comment.userId),
+          builder: (context, snapshot) {
+            final photoUrl = snapshot.data;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E2B4F),
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: const Color(0xFF4A6FFF),
+                    backgroundImage: photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                    child: (photoUrl == null || photoUrl.isEmpty)
+                        ? Text(comment.userName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(comment.userName, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                            const SizedBox(width: 8),
+                            Text(_timeAgo(comment.createdAt), style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.6))),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(comment.text, style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, height: 1.4)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => _toggleLike(comment.id, comment.likes),
+                              child: Row(
+                                children: [
+                                  Icon(isLiked ? Icons.favorite : Icons.favorite_border,
+                                      size: 16, color: isLiked ? Colors.red : Colors.white70),
+                                  const SizedBox(width: 6),
+                                  Text('${comment.likes}', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            GestureDetector(
+                              onTap: () => setState(() => _replyingToId = comment.id),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.reply, size: 16, color: Colors.white70),
+                                  SizedBox(width: 6),
+                                  Text('Reply', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        // Replies to this comment
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('comments')
@@ -307,7 +413,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
             return Padding(
               padding: const EdgeInsets.only(left: 50),
               child: Column(
-                children: replies.map((reply) => _buildCommentTile(reply, isReply: true)).toList(),
+                children: replies.map((reply) => _buildReplyTile(reply)).toList(),
               ),
             );
           },
@@ -316,28 +422,29 @@ class _CommentsScreenState extends State<CommentsScreen> {
     );
   }
 
-  Widget _buildCommentTile(Comment comment, {bool isReply = false}) {
-    final isLiked = _likedComments.contains(comment.id);
+  // ✅ Reply tile (NO reply button here)
+  Widget _buildReplyTile(Comment reply) {
+    final isLiked = _likedComments.contains(reply.id);
 
     return FutureBuilder<String?>(
-      future: _getUserPhoto(comment.userId),
+      future: _getUserPhoto(reply.userId),
       builder: (context, snapshot) {
         final photoUrl = snapshot.data;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isReply ? const Color(0xFF15243B) : const Color(0xFF1E2B4F),
+            color: const Color(0xFF15243B),
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 18,
+                radius: 16,
                 backgroundColor: const Color(0xFF4A6FFF),
                 backgroundImage: photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
                 child: (photoUrl == null || photoUrl.isEmpty)
-                    ? Text(comment.userName[0].toUpperCase(), style: const TextStyle(color: Colors.white))
+                    ? Text(reply.userName[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 12))
                     : null,
               ),
               const SizedBox(width: 12),
@@ -347,39 +454,24 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(comment.userName, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text(reply.userName, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                         const SizedBox(width: 8),
-                        Text(_timeAgo(comment.createdAt), style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.6))),
+                        Text(_timeAgo(reply.createdAt), style: GoogleFonts.poppins(fontSize: 11, color: Colors.white.withOpacity(0.6))),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(comment.text, style: GoogleFonts.poppins(fontSize: 14, color: Colors.white, height: 1.4)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => _toggleLike(comment.id, comment.likes),
-                          child: Row(
-                            children: [
-                              Icon(isLiked ? Icons.favorite : Icons.favorite_border,
-                                  size: 16, color: isLiked ? Colors.red : Colors.white70),
-                              const SizedBox(width: 6),
-                              Text('${comment.likes}', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        GestureDetector(
-                          onTap: () => setState(() => _replyingToId = comment.id),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.reply, size: 16, color: Colors.white70),
-                              SizedBox(width: 6),
-                              Text('Reply', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Text(reply.text, style: GoogleFonts.poppins(fontSize: 13, color: Colors.white, height: 1.4)),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () => _toggleLike(reply.id, reply.likes),
+                      child: Row(
+                        children: [
+                          Icon(isLiked ? Icons.favorite : Icons.favorite_border,
+                              size: 14, color: isLiked ? Colors.red : Colors.white70),
+                          const SizedBox(width: 6),
+                          Text('${reply.likes}', style: GoogleFonts.poppins(fontSize: 11, color: Colors.white70)),
+                        ],
+                      ),
                     ),
                   ],
                 ),

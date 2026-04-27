@@ -10,8 +10,7 @@ class Comment {
   final bool isFlagged;
   final String? photoUrl;
   final int likes;
-  final String? parentId;
-  final String? rootParentId;  // ✅ For nested replies
+  final String? parentId;  // null = main comment, not null = reply to main comment
 
   Comment({
     required this.id,
@@ -24,10 +23,10 @@ class Comment {
     this.photoUrl,
     this.likes = 0,
     this.parentId,
-    this.rootParentId,
   });
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJson() {
+  final map = <String, dynamic>{
     'complaintId': complaintId,
     'userId': userId,
     'userName': userName,
@@ -36,9 +35,16 @@ class Comment {
     'isFlagged': isFlagged,
     'photoUrl': photoUrl,
     'likes': likes,
-    'parentId': parentId,
-    'rootParentId': rootParentId,
+    // ❌ 'parentId': parentId,  // Yeh hata do
   };
+
+  // ✅ Sirf tab add karo jab reply ho
+  if (parentId != null) {
+    map['parentId'] = parentId;
+  }
+
+  return map;
+}
 
   factory Comment.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -53,7 +59,6 @@ class Comment {
       photoUrl: data['photoUrl'],
       likes: data['likes'] ?? 0,
       parentId: data['parentId'],
-      rootParentId: data['rootParentId'],
     );
   }
 }

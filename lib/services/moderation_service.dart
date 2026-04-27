@@ -10,7 +10,10 @@ class ModerationService {
     'stupid', 'idiot', 'fool', 'dumb', 'moron', 'loser',
     'shut up', 'nonsense', 'rubbish', 'useless',
     'bakwas', 'nalayak', 'ahmaq', 'bewakoof', 'pagal', 'beghairat',
-    'khoti', 'bekaar', 'nalaik', 'ahmak', 'badtameez', 'gustakh',
+    'khoti', 'bekaar', 'nalaik', 'ahmak', 'badtameez', 'gustakh', 'ghatia',
+     'ghatiya' , 'naayhal' ,'corrupt' ,'chawal' , 'haram' ,  'harami', 'haramzaada',
+     'kamina', 'kaminey', 'kameena', 'lafanga', 'lafang',  'naali', 'nali',
+     
   ];
 
   ModerationService() {
