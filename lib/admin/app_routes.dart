@@ -13,9 +13,7 @@ import 'screens/complaints/complaints_menu.dart';
 import 'screens/complaints/complaint_list.dart';
 import 'screens/complaints/complaint_detail.dart';
 
-// Settings
-import 'screens/settings/settings.dart';
-import 'screens/settings/edit_profile.dart';
+import 'profile_screen.dart';
 
 // Management
 import 'screens/management/manage_departments.dart';
@@ -39,11 +37,10 @@ class AppRoutes {
   static const complaintList = '/complaintList';
   static const complaintDetail = '/complaintDetail';
 
-  static const settings = '/settings';
-  static const editProfile = '/editProfile';
-
   static const manageDepartments = '/manageDepartments';
   static const addDepartment = '/addDepartment';
+
+  static const profile = '/profile';
 
   static const manageCategories = '/manageCategories';
   static const addCategory = '/addCategory';
@@ -65,8 +62,7 @@ class AppRoutes {
     complaintsMenu: (_) => const ComplaintsMenuScreen(),
     complaintList: (_) => const ComplaintListScreen(),
     complaintDetail: (_) => const ComplaintDetailScreen(),
-    settings: (_) => const SettingsScreen(),
-    editProfile: (_) => const EditProfileScreen(),
+    profile: (_) => const ProfileScreen(),
     manageDepartments: (_) => const ManageDepartmentsScreen(),
     addDepartment: (_) => const AddDepartmentScreen(),
     manageCategories: (_) => const ManageCategoriesScreen(),
