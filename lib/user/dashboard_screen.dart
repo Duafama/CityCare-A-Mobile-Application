@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'notification_screen.dart';
 import 'submit_screen.dart';
 import 'comments_screen.dart';
 import 'my_complaints_screen.dart';
 import 'profile.dart';
+import '../models/complaint_enums.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,100 +18,115 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   String _selectedFilter = 'All';
-  final int _notificationCount = 3;
+  int _notificationCount = 0;
+  
+  // 🔥 UPVOTE TRACKING
+  Set<String> _userUpvotedComplaints = {};
 
-  // CHANGE 2: Changed "Pending" to "Approved" in filters
   final List<String> _filters = ['All', 'Approved', 'In-Progress', 'Resolved'];
 
-  final List<Map<String, dynamic>> _complaints = [
-    {
-      'id': '1',
-      'userName': 'Maryam',
-      'userInitial': 'M',
-      'category': 'Broken Streetlight',
-      'location': '123 Main street, Udaipur',
-      'time': '4 hours ago',
-      'status': 'Approved', // Changed from Pending to Approved
-      'description':
-          'A streetlight near 123 Main Street is broken for 4 days now and is not working at nighttime. Last night there was an accident due to poor visibility.',
-      'fullDescription': // Added full description for Read More
-          'A streetlight near 123 Main Street is broken for 4 days now and is not working at nighttime. Last night there was an accident due to poor visibility. The streetlight pole is damaged at the base and needs replacement. Residents have reported multiple complaints about this issue. The area becomes completely dark after sunset, posing safety risks for pedestrians and vehicles.',
-         'images': [
-  'assets/images/street_image.jpg',
-  'assets/images/street_image.jpg',
-],
-      'likes': 24,
-      'comments': 8,
-      'isLiked': false,
-      'showFullDescription': false, // Added for Read More toggle
-    },
-    {
-      'id': '2',
-      'userName': 'Ahmed Raza',
-      'userInitial': 'A',
-      'category': 'Garbage Pile Up',
-      'location': 'Gulberg, Lahore',
-      'time': '6 hours ago',
-      'status': 'In-Progress',
-      'description':
-          'Huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days.',
-      'fullDescription':
-          'Huge pile of garbage near Main Market Gulberg that hasn\'t been collected for 3 days. It\'s causing bad smell and health hazards for residents. The garbage includes household waste, plastic bags, and food waste. Local shopkeepers are complaining about the foul smell affecting their businesses. The pile is attracting stray animals and insects.',
-      'images': [
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-        'https://images.unsplash.com/photo-1518495978945-83d413a61108?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotificationCount();
+    _loadUserUpvotedComplaints();
+  }
+
+  // 🔥 LOAD USER'S UPVOTED COMPLAINTS
+  Future<void> _loadUserUpvotedComplaints() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final upvotesSnapshot = await FirebaseFirestore.instance
+            .collection('userUpvotes')
+            .doc(user.uid)
+            .collection('upvotes')
+            .get();
         
-      ],
-      'likes': 42,
-      'comments': 12,
-      'isLiked': true,
-      'showFullDescription': false,
-    },
-    {
-      'id': '3',
-      'userName': 'Sara Khan',
-      'userInitial': 'S',
-      'category': 'Water Leakage',
-      'location': 'DHA Phase 5',
-      'time': '1 day ago',
-      'status': 'Resolved',
-      'description':
-          'Major water leakage near House #45 Street 7. Water is being wasted and road is getting damaged.',
-      'fullDescription':
-          'Major water leakage near House #45 Street 7. Water is being wasted and road is getting damaged due to continuous flow. The leakage is from a broken main water pipe. Water department has been informed and they have fixed the issue. Road repair work will be completed within 2 days.',
-      'images': [
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-        'https://images.unsplash.com/photo-1563201516-9ea3c4c4fe30?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'likes': 18,
-      'comments': 5,
-      'isLiked': false,
-      'showFullDescription': false,
-    },
-    {
-      'id': '4',
-      'userName': 'Ali Hassan',
-      'userInitial': 'A',
-      'category': 'Potholes',
-      'location': 'Model Town',
-      'time': '2 days ago',
-      'status': 'Approved', // Changed from Pending to Approved
-      'description':
-          'Multiple large potholes on Main Boulevard causing traffic accidents daily.',
-      'fullDescription':
-          'Multiple large potholes on Main Boulevard causing traffic accidents daily. Need immediate repair before more accidents happen. The potholes are 6-8 inches deep and spread across 50 meters of road. Multiple vehicles have reported tire damage. The road becomes dangerous during rainy season.',
-      'images': [
-        'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60',
-      ],
-      'likes': 56,
-      'comments': 18,
-      'isLiked': false,
-      'showFullDescription': false,
-    },
-  ];
+        setState(() {
+          _userUpvotedComplaints = upvotesSnapshot.docs.map((doc) => doc.id).toSet();
+        });
+      }
+    } catch (e) {
+      print('Error loading upvotes: $e');
+    }
+  }
+
+  // 🔥 TOGGLE UPVOTE FUNCTION
+  Future<void> _toggleUpvote(String complaintId, int currentUpvotes) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login to upvote'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      final complaintRef = FirebaseFirestore.instance.collection('complaints').doc(complaintId);
+      final upvoteRef = FirebaseFirestore.instance
+          .collection('userUpvotes')
+          .doc(user.uid)
+          .collection('upvotes')
+          .doc(complaintId);
+
+      if (_userUpvotedComplaints.contains(complaintId)) {
+        // 🔥 REMOVE UPVOTE
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          transaction.update(complaintRef, {'upvoteCount': currentUpvotes - 1});
+          transaction.delete(upvoteRef);
+        });
+        
+        setState(() {
+          _userUpvotedComplaints.remove(complaintId);
+        });
+      } else {
+        // 🔥 ADD UPVOTE
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          transaction.update(complaintRef, {'upvoteCount': currentUpvotes + 1});
+          transaction.set(upvoteRef, {
+            'complaintId': complaintId,
+            'userId': user.uid,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+        });
+        
+        setState(() {
+          _userUpvotedComplaints.add(complaintId);
+        });
+      }
+    } catch (e) {
+      print('Error toggling upvote: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating upvote'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _fetchNotificationCount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final snapshot = await FirebaseFirestore.instance
+            .collection('notifications')
+            .where('userId', isEqualTo: user.uid)
+            .where('isRead', isEqualTo: false)
+            .get();
+        if (mounted) {
+          setState(() {
+            _notificationCount = snapshot.docs.length;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching notifications: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -123,20 +141,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: Colors.white,
           ),
         ),
-        // CHANGE 1: Removed back button by removing automaticallyImplyLeading
-        automaticallyImplyLeading: false, // This removes back button
+        automaticallyImplyLeading: false,
         actions: [
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_none,
-                    color: Colors.white, size: 26),
+                icon: const Icon(Icons.notifications_none, color: Colors.white, size: 26),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationScreen(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const NotificationScreen()),
                   );
                 },
               ),
@@ -146,21 +160,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   top: 8,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
+                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                     child: Text(
                       _notificationCount.toString(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: GoogleFonts.poppins(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -185,16 +189,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => const SubmitScreen()),
+                    MaterialPageRoute(builder: (context) => const SubmitScreen()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4A6FFF),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
                 child: Row(
@@ -204,10 +205,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(width: 10),
                     Text(
                       'Submit a New Complaint',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -222,11 +220,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   'Public Feed',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F1A3D),
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D)),
                 ),
                 const SizedBox(height: 12),
                 SingleChildScrollView(
@@ -243,9 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               filter,
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF0F1A3D),
+                                color: isSelected ? Colors.white : const Color(0xFF0F1A3D),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -254,9 +246,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           selectedColor: const Color(0xFF4A6FFF),
                           backgroundColor: Colors.grey[100],
                           side: BorderSide.none,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           onSelected: (selected) {
                             setState(() {
                               _selectedFilter = filter;
@@ -272,16 +262,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 1),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 70),
-              itemCount: _complaints.length,
-              itemBuilder: (context, index) {
-                final complaint = _complaints[index];
-                if (_selectedFilter != 'All' &&
-                    complaint['status'] != _selectedFilter) {
-                  return const SizedBox.shrink();
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('complaints')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFF4A6FFF)));
                 }
-                return _buildComplaintCard(complaint, index);
+
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}', style: GoogleFonts.poppins(color: Colors.red)));
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.feed_outlined, size: 80, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No complaints yet',
+                          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Be the first to submit a complaint',
+                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                var allComplaints = snapshot.data!.docs;
+                
+                var filteredComplaints = allComplaints.where((doc) {
+                  String status = doc['status'] ?? 'Pending';
+                  if (status == 'Pending' || status == 'Rejected') {
+                    return false;
+                  }
+                  if (_selectedFilter != 'All' && status != _selectedFilter) {
+                    return false;
+                  }
+                  return true;
+                }).toList();
+
+                if (filteredComplaints.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.filter_alt_outlined, size: 60, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No ${_selectedFilter == 'All' ? 'approved' : _selectedFilter} complaints',
+                          style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 70),
+                  itemCount: filteredComplaints.length,
+                  itemBuilder: (context, index) {
+                    var doc = filteredComplaints[index];
+                    Map<String, dynamic> complaint = doc.data() as Map<String, dynamic>;
+                    complaint['id'] = doc.id;
+                    return _buildComplaintCard(complaint);
+                  },
+                );
               },
             ),
           ),
@@ -299,22 +353,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         selectedFontSize: 12,
         unselectedFontSize: 12,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            label: 'Submit',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt),
-            label: 'My Complaints',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline), label: 'Submit'),
+          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'My Complaints'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
       ),
     );
@@ -325,39 +367,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 0:
         break;
       case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const SubmitScreen()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const SubmitScreen()));
         break;
       case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MyComplaintsScreen()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyComplaintsScreen()));
         break;
       case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ProfileScreen()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
         break;
     }
   }
 
-  Widget _buildComplaintCard(Map<String, dynamic> complaint, int index) {
+  Widget _buildComplaintCard(Map<String, dynamic> complaint) {
+    String status = complaint['status'] ?? 'Pending';
+    Color statusColor = _getStatusColor(status);
+    String userEmail = complaint['citizenEmail'] ?? 'Anonymous';
+    String userName = userEmail.split('@')[0];
+    String userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'U';
+    String timeAgo = _getTimeAgo(complaint['createdAt']);
+    
+    // Before images (complaint images)
+    List<String> beforeImages = [];
+    if (complaint['beforeImages'] != null && complaint['beforeImages'] is List) {
+      beforeImages = List<String>.from(complaint['beforeImages']);
+    }
+    
+    // After images (resolution images - for resolved complaints)
+    List<String> afterImages = [];
+    if (complaint['afterImages'] != null && complaint['afterImages'] is List) {
+      afterImages = List<String>.from(complaint['afterImages']);
+    }
+    
+    bool isResolved = status == 'Resolved';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            spreadRadius: 2,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, spreadRadius: 2, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -370,40 +419,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 CircleAvatar(
                   backgroundColor: const Color(0xFF4A6FFF),
                   radius: 20,
-                  child: Text(
-                    complaint['userInitial'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: Text(userInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        complaint['userName'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF0F1A3D),
-                        ),
-                      ),
+                      Text(userName, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D))),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined,
-                              color: Colors.red, size: 14),
+                          const Icon(Icons.location_on_outlined, color: Colors.red, size: 14),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              complaint['location'],
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
+                              complaint['location'] ?? 'No location',
+                              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -414,21 +446,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color:
-                        _getStatusColor(complaint['status']).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    complaint['status'],
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: _getStatusColor(complaint['status']),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Text(status, style: GoogleFonts.poppins(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -436,41 +456,112 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Complaint Category: ${complaint['category']}',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF0F1A3D),
-              ),
+              'Complaint Category: ${complaint['categoryName'] ?? 'Other'}',
+              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D)),
             ),
           ),
           const SizedBox(height: 12),
-          if (complaint['images'].isNotEmpty)
-            Container(
-              height: 180,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: complaint['images'].length,
-                itemBuilder: (context, imgIndex) {
-                  return Container(
-                    width: 220,
-                    margin: EdgeInsets.only(
-                      right: imgIndex < complaint['images'].length - 1 ? 12 : 0,
-                    ),
-                    decoration: BoxDecoration(
-  borderRadius: BorderRadius.circular(12),
-  image: DecorationImage(
-    image: complaint['images'][imgIndex].toString().startsWith('http')
-        ? NetworkImage(complaint['images'][imgIndex])
-        : AssetImage(complaint['images'][imgIndex]) as ImageProvider,
-    fit: BoxFit.cover,
-  ),
-),
-                  );
-                },
-              ),
+          
+          // 🔥 BEFORE IMAGES - FIXED WIDTH
+          if (beforeImages.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Before Images',
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[600]),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 220,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: beforeImages.length,
+                    itemBuilder: (context, imgIndex) {
+                      // FIX: Dynamic width - 1 image = full width, multiple = 280
+                      double imageWidth = beforeImages.length == 1 
+                          ? MediaQuery.of(context).size.width - 32
+                          : 280;
+                      return Container(
+                        width: imageWidth,
+                        margin: EdgeInsets.only(right: imgIndex < beforeImages.length - 1 ? 12 : 0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          image: DecorationImage(
+                            image: NetworkImage(beforeImages[imgIndex]),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
             ),
+          
+          // 🔥 AFTER IMAGES - FIXED WIDTH (Show only when resolved and available)
+          if (isResolved && afterImages.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'After Images (Resolution Proof)',
+                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.green),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Resolved',
+                          style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 220,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: afterImages.length,
+                    itemBuilder: (context, imgIndex) {
+                      // FIX: Dynamic width - 1 image = full width, multiple = 280
+                      double imageWidth = afterImages.length == 1 
+                          ? MediaQuery.of(context).size.width - 32
+                          : 280;
+                      return Container(
+                        width: imageWidth,
+                        margin: EdgeInsets.only(right: imgIndex < afterImages.length - 1 ? 12 : 0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
+                          image: DecorationImage(
+                            image: NetworkImage(afterImages[imgIndex]),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -478,50 +569,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   'Description:',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0F1A3D),
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D)),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  complaint['showFullDescription']
-                      ? complaint['fullDescription']
-                      : complaint['description'],
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                  maxLines: complaint['showFullDescription'] ? null : 3,
-                  overflow: complaint['showFullDescription']
-                      ? null
-                      : TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                // CHANGE 3: Improved Read More functionality
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      complaint['showFullDescription'] =
-                          !complaint['showFullDescription'];
-                    });
-                  },
-                  child: Text(
-                    complaint['showFullDescription']
-                        ? 'Read Less'
-                        : 'Read More',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: const Color(0xFF4A6FFF),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  complaint['description'] ?? 'No description provided',
+                  style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700], height: 1.5),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
+          
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -531,45 +591,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     const Icon(Icons.access_time, color: Colors.grey, size: 16),
                     const SizedBox(width: 6),
-                    Text(
-                      complaint['time'],
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
+                    Text(timeAgo, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
                 Row(
                   children: [
+                    // 🔥 UPVOTE BUTTON - FULLY WORKING
                     GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          complaint['isLiked'] = !complaint['isLiked'];
-                          if (complaint['isLiked']) {
-                            complaint['likes']++;
-                          } else {
-                            complaint['likes']--;
-                          }
-                        });
-                      },
+                      onTap: () => _toggleUpvote(complaint['id'], complaint['upvoteCount'] ?? 0),
                       child: Row(
                         children: [
                           Icon(
-                            complaint['isLiked']
-                                ? Icons.favorite
+                            _userUpvotedComplaints.contains(complaint['id']) 
+                                ? Icons.favorite 
                                 : Icons.favorite_border,
-                            color:
-                                complaint['isLiked'] ? Colors.red : Colors.grey,
+                            color: _userUpvotedComplaints.contains(complaint['id']) 
+                                ? Colors.red 
+                                : Colors.grey,
                             size: 20,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${complaint['likes']}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              color: Colors.grey[700],
-                            ),
+                            '${complaint['upvoteCount'] ?? 0}',
+                            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
                           ),
                         ],
                       ),
@@ -580,38 +624,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                CommentsScreen(complaint: complaint),
+                            builder: (context) => CommentsScreen(complaint: complaint),
                           ),
                         );
                       },
                       child: Row(
                         children: [
-                          const Icon(Icons.comment_outlined,
-                              color: Colors.grey, size: 20),
+                          const Icon(Icons.comment_outlined, color: Colors.grey, size: 20),
                           const SizedBox(width: 4),
                           Text(
-                            '${complaint['comments']}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              color: Colors.grey[700],
-                            ),
+                            '${complaint['commentCount'] ?? 0}',
+                            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    GestureDetector(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Shared: ${complaint['category']}'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
-                      child: const Icon(Icons.share_outlined,
-                          color: Colors.grey, size: 20),
                     ),
                   ],
                 ),
@@ -625,14 +651,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'Approved': // Updated from Pending
-        return Colors.orange;
-      case 'In-Progress':
-        return Colors.blue;
-      case 'Resolved':
-        return Colors.green;
-      default:
-        return Colors.grey;
+      case 'Approved': return Colors.orange;
+      case 'In-Progress': return Colors.blue;
+      case 'Resolved': return Colors.green;
+      default: return Colors.grey;
+    }
+  }
+
+  String _getTimeAgo(Timestamp? timestamp) {
+    if (timestamp == null) return 'Recently';
+    
+    DateTime date = timestamp.toDate();
+    Duration diff = DateTime.now().difference(date);
+    
+    if (diff.inDays > 0) {
+      return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+    } else if (diff.inHours > 0) {
+      return '${diff.inHours} hour${diff.inHours > 1 ? 's' : ''} ago';
+    } else if (diff.inMinutes > 0) {
+      return '${diff.inMinutes} minute${diff.inMinutes > 1 ? 's' : ''} ago';
+    } else {
+      return 'Just now';
     }
   }
 }
