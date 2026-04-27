@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../services/departmentComplaintService.dart';
 
 class ComplaintDetailScreen extends StatefulWidget {
   const ComplaintDetailScreen({super.key});
@@ -14,8 +15,12 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   String? docId;
   String? selectedDept;
+  String? selectedCategory;
 
   List<String> departments = [];
+  List<Map<String, dynamic>> categories = [];
+
+  final DepartmentComplaintService _service = DepartmentComplaintService();
 
   @override
   void didChangeDependencies() {
@@ -25,21 +30,50 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
     _load();
     _loadDepartments();
+    _loadCategories();
   }
 
+  // ===================== LOAD =====================
   Future<void> _load() async {
     final doc = await FirebaseFirestore.instance
         .collection('complaints')
         .doc(docId)
         .get();
 
+    final complaintData = doc.data();
+
+    String? deptName = complaintData?['departmentName'];
+
+    // 🔥 If missing → derive from category
+    if ((deptName == null || deptName.isEmpty) &&
+        complaintData?['categoryId'] != null) {
+      final catDoc = await FirebaseFirestore.instance
+          .collection('categories')
+          .doc(complaintData!['categoryId'])
+          .get();
+
+      final deptId = catDoc.data()?['departmentId'];
+
+      if (deptId != null) {
+        final deptDoc = await FirebaseFirestore.instance
+            .collection('departments')
+            .doc(deptId)
+            .get();
+
+        deptName = deptDoc.data()?['name'];
+      }
+    }
+
     setState(() {
-      data = doc.data();
+      data = complaintData;
       loading = false;
-      selectedDept = data?['departmentName'];
+
+      selectedCategory = complaintData?['categoryName'];
+      selectedDept = deptName;
     });
   }
 
+  // ===================== LOAD DEPARTMENTS =====================
   Future<void> _loadDepartments() async {
     final snap =
         await FirebaseFirestore.instance.collection('departments').get();
@@ -49,57 +83,80 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     });
   }
 
+  // ===================== LOAD ACTIVE CATEGORIES =====================
+  Future<void> _loadCategories() async {
+    final snap = await FirebaseFirestore.instance
+        .collection('categories')
+        .where('status', isEqualTo: 'active') // ✅ FIXED
+        .get();
+
+    setState(() {
+      categories = snap.docs.map((doc) {
+        return {
+          "id": doc.id,
+          "name": doc['name'],
+          "departmentId": doc['departmentId'],
+        };
+      }).toList();
+    });
+  }
+
+  // ===================== UPDATE STATUS =====================
   Future<void> _updateStatus(String status) async {
-    await FirebaseFirestore.instance
-        .collection('complaints')
-        .doc(docId)
-        .update({"status": status});
+    await _service.updateComplaintStatus(docId!, status);
 
     setState(() => data!['status'] = status);
   }
 
-  Future<void> _updateDepartment(String deptName) async {
-    final deptSnap = await FirebaseFirestore.instance
-        .collection('departments')
-        .where('name', isEqualTo: deptName)
-        .limit(1)
-        .get();
+  // ===================== UPDATE CATEGORY (AUTO DEPT) =====================
+  Future<void> _updateCategory(String categoryName) async {
+    final selected = categories.firstWhere(
+      (c) => c['name'] == categoryName,
+      orElse: () => {},
+    );
 
-    if (deptSnap.docs.isEmpty) return;
+    if (selected.isEmpty) return;
 
-    final deptId = deptSnap.docs.first.id;
+    final categoryId = selected['id'];
+    final deptId = selected['departmentId'];
 
-    final catSnap = await FirebaseFirestore.instance
-        .collection('categories')
-        .where('departmentId', isEqualTo: deptId)
-        .limit(1)
-        .get();
-
-    String newCategory = "Other";
-    String newCategoryId = "";
-
-    if (catSnap.docs.isNotEmpty) {
-      newCategory = catSnap.docs.first['name'];
-      newCategoryId = catSnap.docs.first.id;
+    if (deptId == null || deptId.toString().isEmpty) {
+      print("❌ Department ID missing in category");
+      return;
     }
+
+    final deptDoc = await FirebaseFirestore.instance
+        .collection('departments')
+        .doc(deptId)
+        .get();
+
+    if (!deptDoc.exists) {
+      print("❌ Department not found in Firestore");
+      return;
+    }
+
+    final deptName = deptDoc.data()?['name'] ?? '';
 
     await FirebaseFirestore.instance
         .collection('complaints')
         .doc(docId)
         .update({
+      "categoryName": categoryName,
+      "categoryId": categoryId,
       "departmentName": deptName,
       "departmentId": deptId,
-      "categoryName": newCategory,
-      "categoryId": newCategoryId,
     });
 
     setState(() {
+      selectedCategory = categoryName;
       selectedDept = deptName;
+
+      data!['categoryName'] = categoryName;
       data!['departmentName'] = deptName;
-      data!['categoryName'] = newCategory;
     });
   }
 
+  // ===================== CONFIRM ACTION =====================
   void _confirmAction(String action) {
     showDialog(
       context: context,
@@ -123,7 +180,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
-  /// 🔥 FULL SCREEN IMAGE VIEW
+  // ===================== IMAGE VIEW =====================
   void _openImage(String url) {
     Navigator.push(
       context,
@@ -134,17 +191,12 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
             backgroundColor: Colors.black,
             iconTheme: const IconThemeData(color: Colors.white),
           ),
-          body: Center(
-            child: InteractiveViewer(
-              child: Image.network(url),
-            ),
-          ),
+          body: Center(child: InteractiveViewer(child: Image.network(url))),
         ),
       ),
     );
   }
 
-  /// 🔥 IMAGE ITEM
   Widget _imageItem(String url) {
     return GestureDetector(
       onTap: () => _openImage(url),
@@ -172,49 +224,53 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     }
 
     final isPending = data!['status'] == "Pending";
-    final isOther = data!['categoryName'] == "Other";
+    final isOther = selectedCategory == "Other";
 
     final beforeImages = List<String>.from(data!['beforeImages'] ?? []);
     final afterImages = List<String>.from(data!['afterImages'] ?? []);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
-
-      /// ---------------- AppBar ----------------
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A1F44),
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          "Complaint Detail",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text("Complaint Detail",
+            style: TextStyle(color: Colors.white)),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _card(title: "Category", value: data!['categoryName'] ?? ''),
-
+            // ================= CATEGORY DROPDOWN =================
             _card(
-              title: "Department",
+              title: "Category",
               child: isPending
                   ? DropdownButton<String>(
-                      value: selectedDept,
+                      value:
+                          categories.any((c) => c['name'] == selectedCategory)
+                              ? selectedCategory
+                              : null,
                       isExpanded: true,
-                      hint: const Text("Select Department"),
-                      items: departments
-                          .map((d) => DropdownMenuItem(
-                                value: d,
-                                child: Text(d),
-                              ))
+                      hint: const Text("Select Category"),
+                      items: categories
+                          .map<DropdownMenuItem<String>>(
+                              (c) => DropdownMenuItem<String>(
+                                    value: c['name'] as String,
+                                    child: Text(c['name'] as String),
+                                  ))
                           .toList(),
                       onChanged: (v) {
-                        if (v != null) _updateDepartment(v);
+                        if (v != null) _updateCategory(v);
                       },
                     )
-                  : Text(data!['departmentName'] ?? ''),
+                  : Text(data!['categoryName'] ?? ''),
+            ),
+
+            // ================= AUTO UPDATED DEPARTMENT =================
+            _card(
+              title: "Department",
+              value: selectedDept ?? '',
             ),
 
             _card(
@@ -223,20 +279,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               valueColor: _priorityColor(data!['priority']),
             ),
 
-            _card(
-              title: "Description",
-              value: data!['description'] ?? '',
-            ),
-
-            _card(
-              title: "Address",
-              value: data!['location'] ?? '',
-            ),
-
-            _card(
-              title: "Citizen",
-              value: data!['citizenEmail'] ?? '',
-            ),
+            _card(title: "Description", value: data!['description'] ?? ''),
+            _card(title: "Address", value: data!['location'] ?? ''),
+            _card(title: "Citizen", value: data!['citizenEmail'] ?? ''),
 
             _card(
               title: "Date",
@@ -246,58 +291,34 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
             const SizedBox(height: 10),
 
-            /// ================= BEFORE IMAGES =================
             if (beforeImages.isNotEmpty) ...[
-              const Text(
-                "Before Images",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              const Text("Before Images",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               SizedBox(
                 height: 100,
-                child: ListView.builder(
+                child: ListView(
                   scrollDirection: Axis.horizontal,
-                  itemCount: beforeImages.length,
-                  itemBuilder: (_, i) => _imageItem(beforeImages[i]),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            /// ================= AFTER IMAGES =================
-            if (data!['status'] == "Resolved" && afterImages.isNotEmpty) ...[
-              const Text(
-                "After Images",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: afterImages.length,
-                  itemBuilder: (_, i) => _imageItem(afterImages[i]),
+                  children: beforeImages.map(_imageItem).toList(),
                 ),
               ),
             ],
 
             const SizedBox(height: 20),
 
-            /// ================= ACTIONS =================
+            // ================= APPROVE / REJECT =================
             if (isPending)
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                      ),
+                          backgroundColor: Colors.green),
                       onPressed: () {
-                        if (isOther && selectedDept == null) {
+                        if (isOther || selectedCategory == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text("Please select department first"),
+                              content: Text("Please select a valid category"),
                             ),
                           );
                           return;
@@ -310,9 +331,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
+                      style:
+                          ElevatedButton.styleFrom(backgroundColor: Colors.red),
                       onPressed: () => _confirmAction("Rejected"),
                       child: const Text("Reject"),
                     ),
@@ -325,7 +345,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     );
   }
 
-  /// ---------------- UI CARD ----------------
   Widget _card({
     required String title,
     String? value,
@@ -343,13 +362,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.grey)),
           const SizedBox(height: 6),
           child ??
               Text(
