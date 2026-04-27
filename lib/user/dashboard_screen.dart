@@ -52,7 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // 🔥 TOGGLE UPVOTE FUNCTION
+  // 🔥 TOGGLE UPVOTE FUNCTION - FIXED (NO setState causing scroll reset)
   Future<void> _toggleUpvote(String complaintId, int currentUpvotes) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -77,9 +77,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           transaction.delete(upvoteRef);
         });
         
-        setState(() {
-          _userUpvotedComplaints.remove(complaintId);
-        });
+        // Update local set only
+        _userUpvotedComplaints.remove(complaintId);
+        
       } else {
         // 🔥 ADD UPVOTE
         await FirebaseFirestore.instance.runTransaction((transaction) async {
@@ -91,15 +91,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
         });
         
-        setState(() {
-          _userUpvotedComplaints.add(complaintId);
-        });
+        // Update local set only
+        _userUpvotedComplaints.add(complaintId);
       }
+      
+      // 🔥 NO setState here - StreamBuilder will handle UI update automatically
+      
     } catch (e) {
       print('Error toggling upvote: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating upvote'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating upvote'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -123,10 +127,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // 🔥 FETCH USER PROFILE IMAGE FROM FIRESTORE
+  Future<String?> _getUserProfileImage(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (userDoc.exists) {
+        return userDoc['profileImageUrl'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching profile image: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -326,7 +346,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   );
                 }
 
+                // 🔥 FIX: Added key to preserve scroll position
                 return ListView.builder(
+                  key: const PageStorageKey('dashboard_feed_list'),  // 👈 YEH LINE ADD KI HAI
                   padding: const EdgeInsets.only(bottom: 70),
                   itemCount: filteredComplaints.length,
                   itemBuilder: (context, index) {
@@ -381,9 +403,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildComplaintCard(Map<String, dynamic> complaint) {
     String status = complaint['status'] ?? 'Pending';
     Color statusColor = _getStatusColor(status);
+    String citizenId = complaint['citizenId'] ?? '';
     String userEmail = complaint['citizenEmail'] ?? 'Anonymous';
     String userName = userEmail.split('@')[0];
-    String userInitial = userName.isNotEmpty ? userName[0].toUpperCase() : 'U';
     String timeAgo = _getTimeAgo(complaint['createdAt']);
     
     // Before images (complaint images)
@@ -416,10 +438,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: const Color(0xFF4A6FFF),
-                  radius: 20,
-                  child: Text(userInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                // 🔥 USER PROFILE IMAGE
+                FutureBuilder<String?>(
+                  future: _getUserProfileImage(citizenId),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                      return CircleAvatar(
+                        radius: 20,
+                        backgroundImage: NetworkImage(snapshot.data!),
+                        child: null,
+                      );
+                    } else {
+                      return CircleAvatar(
+                        backgroundColor: const Color(0xFF4A6FFF),
+                        radius: 20,
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -462,7 +501,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
           
-          // 🔥 BEFORE IMAGES - FIXED WIDTH
+          // 🔥 BEFORE IMAGES
           if (beforeImages.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,7 +521,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     scrollDirection: Axis.horizontal,
                     itemCount: beforeImages.length,
                     itemBuilder: (context, imgIndex) {
-                      // FIX: Dynamic width - 1 image = full width, multiple = 280
                       double imageWidth = beforeImages.length == 1 
                           ? MediaQuery.of(context).size.width - 32
                           : 280;
@@ -504,7 +542,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           
-          // 🔥 AFTER IMAGES - FIXED WIDTH (Show only when resolved and available)
+          // 🔥 AFTER IMAGES
           if (isResolved && afterImages.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,7 +578,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     scrollDirection: Axis.horizontal,
                     itemCount: afterImages.length,
                     itemBuilder: (context, imgIndex) {
-                      // FIX: Dynamic width - 1 image = full width, multiple = 280
                       double imageWidth = afterImages.length == 1 
                           ? MediaQuery.of(context).size.width - 32
                           : 280;
@@ -596,7 +633,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 Row(
                   children: [
-                    // 🔥 UPVOTE BUTTON - FULLY WORKING
                     GestureDetector(
                       onTap: () => _toggleUpvote(complaint['id'], complaint['upvoteCount'] ?? 0),
                       child: Row(
