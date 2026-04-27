@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/complaint.dart';
 import '../models/TimelineEvent.dart';
@@ -59,33 +58,31 @@ class DepartmentComplaintService {
   // ===============================
   // 4. MARK RESOLVED
   // ===============================
-  Future<void> markResolved(
-      String complaintId, String citizenId, File imageFile) async {
+      Future<void> markResolved(
+      String complaintId,
+      String citizenId,
+      String imageUrl,
+    ) async {
 
-    String? imageUrl = await CloudinaryService.uploadImage(imageFile);
+      // 🔥 NO MORE FILE UPLOAD HERE (already done in UI)
+      await _firestore.collection('complaints').doc(complaintId).update({
+        'status': 'Resolved',
+        'afterImages': FieldValue.arrayUnion([imageUrl]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
-    if (imageUrl == null) {
-      throw Exception("Image upload failed");
+      await _addTimelineEvent(
+        complaintId,
+        'Resolved',
+        'Complaint resolved with proof',
+      );
+
+      await _sendNotification(
+        citizenId,
+        'Complaint Resolved',
+        'Your complaint has been resolved',
+      );
     }
-
-    await _firestore.collection('complaints').doc(complaintId).update({
-      'status': 'Resolved',
-      'afterImages': FieldValue.arrayUnion([imageUrl]),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    await _addTimelineEvent(
-      complaintId,
-      'Resolved',
-      'Complaint resolved with proof',
-    );
-
-    await _sendNotification(
-      citizenId,
-      'Complaint Resolved',
-      'Your complaint has been resolved',
-    );
-  }
 
   // ===============================
   // 5. UPDATE STATUS

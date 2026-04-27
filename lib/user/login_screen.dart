@@ -155,7 +155,28 @@ class _LoginScreenState extends State<LoginScreen> {
             context,
             '/department-dashboard',
           );
-        } else {
+        } else if (role == 'departmentUser') {
+          if (departmentId == null || departmentId.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Department not assigned to this user"),
+                ),
+              );
+              return;
+            }
+          // 🔥 STORE IN PROVIDER
+          context.read<DepartmentProvider>().setDepartment(
+            departmentId!,
+            'user',
+          );
+
+          // 🔥 NAVIGATE (NO ARGUMENTS)
+          Navigator.pushReplacementNamed(
+            context,
+            '/department-dashboard',
+          );
+        } 
+        else {
           // Citizen dashboard
           Navigator.pushReplacementNamed(context, '/dashboard');
         }

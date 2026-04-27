@@ -84,6 +84,27 @@ class AuthWrapper extends StatelessWidget {
               );
             }
 
+            if (userType == 'departmentUser') {
+              if (departmentId == null || departmentId.isEmpty) {
+                return const Scaffold(
+                  body: Center(child: Text("Department not assigned")),
+                );
+              }
+
+              return Builder(
+                builder: (context) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    context.read<DepartmentProvider>().setDepartment(
+                      departmentId!,
+                      'user',
+                    );
+                  });
+
+                  return const DepartmentDashboard();
+                },
+              );
+            }
+
             return const DashboardScreen();
           },
         );

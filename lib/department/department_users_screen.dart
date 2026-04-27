@@ -40,7 +40,7 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
       final snapshot = await _firestore
           .collection('users')
           .where('departmentId', isEqualTo: departmentId)
-          .where('role', isEqualTo: 'departmentUser')
+          .where('userType', isEqualTo: 'departmentUser')
           .get();
 
       setState(() {
@@ -275,7 +275,7 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
       'name': name,
       'email': email,
       'departmentId': departmentId,
-      'role': 'departmentUser',
+      'userType': 'departmentUser',
       'isActive': true,
       'createdAt': FieldValue.serverTimestamp(),
     });
