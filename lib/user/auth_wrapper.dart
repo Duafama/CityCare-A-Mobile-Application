@@ -7,6 +7,9 @@ import 'package:city_care/user/dashboard_screen.dart';
 import 'package:city_care/admin/admin_dashboard.dart';
 import 'package:city_care/department/department_dashboard.dart';
 
+import 'package:provider/provider.dart';
+import '../providers/department_provider.dart';
+
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -67,7 +70,18 @@ class AuthWrapper extends StatelessWidget {
                 );
               }
 
-              return const DepartmentDashboard();
+              return Builder(
+                builder: (context) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    context.read<DepartmentProvider>().setDepartment(
+                      departmentId!,
+                      'officer',
+                    );
+                  });
+
+                  return const DepartmentDashboard();
+                },
+              );
             }
 
             return const DashboardScreen();
