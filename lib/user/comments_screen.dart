@@ -19,7 +19,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _replyController = TextEditingController();
   final ModerationService _moderation = ModerationService();
   late final User _currentUser;
-  String? _replyingToId;  // Which comment we are replying to
+  String? _replyingToId;
 
   final Set<String> _likedComments = {};
   final Map<String, String> _photoCache = {};
@@ -80,12 +80,11 @@ class _CommentsScreenState extends State<CommentsScreen> {
       createdAt: DateTime.now(),
       isFlagged: false,
       photoUrl: userPhoto ?? _currentUser.photoURL,
-      parentId: null,  // ✅ Main comment — parentId is null
+      parentId: null,
       likes: 0,
     );
 
     await FirebaseFirestore.instance.collection('comments').doc(comment.id).set(comment.toJson());
-
     _commentController.clear();
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -95,8 +94,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
 
   Future<void> _submitReply() async {
     final text = _replyController.text.trim();
-    if (text.isEmpty) return;
-    if (_replyingToId == null) return;
+    if (text.isEmpty || _replyingToId == null) return;
 
     final bool isSafe = _moderation.isCommentSafe(text);
     final complaintId = widget.complaint['complaintId'] ?? widget.complaint['id'];
@@ -126,12 +124,11 @@ class _CommentsScreenState extends State<CommentsScreen> {
       createdAt: DateTime.now(),
       isFlagged: false,
       photoUrl: userPhoto ?? _currentUser.photoURL,
-      parentId: _replyingToId,  // ✅ Reply — parentId is the comment we are replying to
+      parentId: _replyingToId,
       likes: 0,
     );
 
     await FirebaseFirestore.instance.collection('comments').doc(reply.id).set(reply.toJson());
-
     _replyController.clear();
     setState(() => _replyingToId = null);
 
@@ -168,162 +165,89 @@ class _CommentsScreenState extends State<CommentsScreen> {
         centerTitle: true,
         title: Text('Comments', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white)),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F1A3D), Color(0xFF1E2B4F), Color(0xFF2A3860)],
-          ),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('comments')
-                    .where('complaintId', isEqualTo: complaintId)
-                    .where('parentId', isEqualTo: null)
-                    .orderBy('createdAt', descending: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Text('No comments yet. Be the first!', style: GoogleFonts.poppins(color: Colors.white70)),
-                    );
-                  }
-                  final comments = snapshot.data!.docs.map((doc) => Comment.fromFirestore(doc)).toList();
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(top: 8),
-                    itemCount: comments.length,
-                    itemBuilder: (context, index) => _buildCommentWithReplies(comments[index]),
+      body: Column(
+        children: [
+          // Comments List
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('comments')
+                  .where('complaintId', isEqualTo: complaintId)
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Text('No comments yet. Be the first!', style: GoogleFonts.poppins(color: Colors.white70)),
                   );
-                },
+                }
+                final allComments = snapshot.data!.docs.map((doc) => Comment.fromFirestore(doc)).toList();
+                final mainComments = allComments.where((c) => c.parentId == null).toList();
+                return ListView.builder(
+                  padding: const EdgeInsets.only(top: 8),
+                  itemCount: mainComments.length,
+                  itemBuilder: (context, index) => _buildCommentWithReplies(mainComments[index], allComments),
+                );
+              },
+            ),
+          ),
+
+          // Reply Input
+          if (_replyingToId != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: const Color(0xFF0F1A3D),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _replyController,
+                      style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Write a reply...',
+                        hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withOpacity(0.6)),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  IconButton(onPressed: _submitReply, icon: const Icon(Icons.send, color: Color(0xFF4A6FFF))),
+                  IconButton(onPressed: () => setState(() => _replyingToId = null), icon: const Icon(Icons.close, color: Colors.red)),
+                ],
               ),
             ),
 
-            // 🔥 REPLY INPUT
-            if (_replyingToId != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                color: const Color(0xFF0F1A3D),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E2B4F),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF4A6FFF)),
-                        ),
-                        child: TextField(
-                          controller: _replyController,
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Write a reply...',
-                            hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withOpacity(0.6)),
-                            border: InputBorder.none,
-                          ),
-                        ),
+          // Main Input
+          if (_replyingToId == null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: const Color(0xFF0F1A3D),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Add a comment...',
+                        hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withOpacity(0.6)),
+                        border: InputBorder.none,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: _submitReply,
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF4A6FFF)),
-                        child: const Icon(Icons.send, color: Colors.white, size: 18),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => setState(() => _replyingToId = null),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.red.withOpacity(0.2)),
-                        child: const Icon(Icons.close, color: Colors.white70, size: 18),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  IconButton(onPressed: _submitMainComment, icon: const Icon(Icons.send, color: Color(0xFF4A6FFF))),
+                ],
               ),
-
-            // 🔥 MAIN INPUT
-            if (_replyingToId == null)
-              Container(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F1A3D),
-                  border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
-                ),
-                child: Row(
-                  children: [
-                    FutureBuilder<String?>(
-                      future: _getUserPhoto(_currentUser.uid),
-                      builder: (context, snapshot) {
-                        final url = snapshot.data;
-                        return CircleAvatar(
-                          radius: 17,
-                          backgroundColor: const Color(0xFF4A6FFF),
-                          backgroundImage: url != null && url.isNotEmpty ? NetworkImage(url) : null,
-                          child: (url == null || url.isEmpty)
-                              ? Text(_currentUser.displayName?[0]?.toUpperCase() ?? 'U',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14))
-                              : null,
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A3860),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        child: TextField(
-                          controller: _commentController,
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Add a comment...',
-                            hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withOpacity(0.6)),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    InkWell(
-                      onTap: _submitMainComment,
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(colors: [Color(0xFF4A6FFF), Color(0xFF5BC0DE)]),
-                        ),
-                        child: const Icon(Icons.send, color: Colors.white, size: 18),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 
-  // ✅ One comment with its replies
-  Widget _buildCommentWithReplies(Comment comment) {
+  Widget _buildCommentWithReplies(Comment comment, List<Comment> allComments) {
+    final replies = allComments.where((c) => c.parentId == comment.id).toList();
     final isLiked = _likedComments.contains(comment.id);
 
     return Column(
@@ -400,29 +324,12 @@ class _CommentsScreenState extends State<CommentsScreen> {
             );
           },
         ),
-        // Replies to this comment
-        StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('comments')
-              .where('parentId', isEqualTo: comment.id)
-              .orderBy('createdAt', descending: false)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox.shrink();
-            final replies = snapshot.data!.docs.map((doc) => Comment.fromFirestore(doc)).toList();
-            return Padding(
-              padding: const EdgeInsets.only(left: 50),
-              child: Column(
-                children: replies.map((reply) => _buildReplyTile(reply)).toList(),
-              ),
-            );
-          },
-        ),
+        // Replies
+        ...replies.map((reply) => _buildReplyTile(reply)).toList(),
       ],
     );
   }
 
-  // ✅ Reply tile (NO reply button here)
   Widget _buildReplyTile(Comment reply) {
     final isLiked = _likedComments.contains(reply.id);
 
@@ -432,6 +339,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
         final photoUrl = snapshot.data;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          margin: const EdgeInsets.only(left: 50),
           decoration: BoxDecoration(
             color: const Color(0xFF15243B),
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
