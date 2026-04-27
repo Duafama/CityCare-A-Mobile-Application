@@ -3,7 +3,7 @@ import 'department_complaint_list.dart';
 import 'department_complaint_detail.dart';
 import 'department_categories_screen.dart';
 import 'department_users_screen.dart';
-import 'update_status_screen.dart';
+// import 'update_status_screen.dart';
 import 'upload_resolution_screen.dart';
 import 'department_reports.dart';
 import 'department_settings.dart';
@@ -24,7 +24,7 @@ class DepartmentRoutes {
     categories: (_) => const DepartmentCategoriesScreen(),
     list: (_) => const DepartmentComplaintList(),
     complaintDetail: (_) => const DepartmentComplaintDetail(),
-    updateStatus: (_) => const UpdateStatusScreen(),
+    // updateStatus: (_) => const UpdateStatusScreen(),
     uploadProof: (_) => const UploadResolutionScreen(),
     reports: (_) => const DepartmentReportsScreen(),
     settings: (_) => const DepartmentSettingsScreen(),

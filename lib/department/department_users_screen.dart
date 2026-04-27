@@ -328,6 +328,14 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
     );
   }
 
+  Future<void> _toggleUserStatus(String uid, bool currentStatus) async {
+    await _firestore.collection('users').doc(uid).update({
+      'isActive': !currentStatus,
+    });
+
+    _loadUsers();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -455,24 +463,28 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: isActive
-                                            ? Colors.green.withOpacity(0.1)
-                                            : Colors.red.withOpacity(0.1),
-                                        borderRadius:
-                                            BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        isActive ? "Active" : "Inactive",
-                                        style: TextStyle(
+                                    GestureDetector(
+                                      onTap: () =>
+                                          _toggleUserStatus(user['uid'], isActive),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
                                           color: isActive
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                              ? Colors.green.withOpacity(0.1)
+                                              : Colors.red.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          isActive ? "Active" : "Inactive",
+                                          style: TextStyle(
+                                            color: isActive
+                                                ? Colors.green
+                                                : Colors.red,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -482,8 +494,8 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
                                           Icons.delete_outline,
                                           color: Colors.red,
                                           size: 20),
-                                      onPressed: () => _showDeleteConfirm(
-                                          user['uid'], name),
+                                      onPressed: () =>
+                                          _showDeleteConfirm(user['uid'], name),
                                     ),
                                   ],
                                 ),

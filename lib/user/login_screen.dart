@@ -614,23 +614,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DepartmentDashboard(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        "Login as Department",
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    
                   ],
                 ),
 

@@ -39,7 +39,6 @@ class _DepartmentComplaintDetailState
       complaintId = args['complaintId'];
       source = args['source'] ?? "dashboard";
     } else if (args is String) {
-      // fallback: passed as plain complaintId string
       complaintId = args;
     }
 
@@ -121,6 +120,44 @@ class _DepartmentComplaintDetailState
     return "${date.day}/${date.month}/${date.year}";
   }
 
+  Widget _sectionCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// Title
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: primaryBlue,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          /// Content
+          child,
+        ],
+      ),
+    );
+  }
+
   Widget _infoRow(String label, String value) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -150,20 +187,115 @@ class _DepartmentComplaintDetailState
     );
   }
 
-  /// Timeline dot color matches status
-  Color _timelineColor(String status) {
-    switch (status) {
-      case "Approved":
-        return Colors.green;
-      case "InProgress":
-        return Colors.blue;
-      case "Resolved":
-        return Colors.teal;
-      case "Pending":
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
+  Widget _statusChip(String status) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _statusColor(status),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(status, style: const TextStyle(color: Colors.white)),
+    );
+  }
+
+  Widget _priorityChip(String priority) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _priorityColor(priority),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(priority, style: const TextStyle(color: Colors.white)),
+    );
+  }
+
+  Widget _imageList(List<String> images) {
+    return SizedBox(
+      height: 110,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () {
+              _openImageFullScreen(images[index]);
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                images[index],
+                width: 110,
+                height: 110,
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Function to show image in fullscreen on tap
+  void _openImageFullScreen(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.of(context).pop();
+            },
+            child: Center(
+              child: InteractiveViewer(
+                child: Image.network(imageUrl),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _timelineItem(TimelineEvent event) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: _statusColor(event.status),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.status,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _statusColor(event.status),
+                  ),
+                ),
+                Text(event.message),
+                Text(
+                  _formatDate(event.timestamp),
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
   }
 
   @override
@@ -209,386 +341,212 @@ class _DepartmentComplaintDetailState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// TITLE
-              Text(
-                complaint!.categoryName,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: primaryBlue,
+              /// ================= HEADER CARD =================
+              _sectionCard(
+                title: complaint!.categoryName,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        _statusChip(complaint!.status),
+                        const SizedBox(width: 10),
+                        _priorityChip(complaint!.priority),
+                      ],
+                    ),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              /// STATUS + PRIORITY
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _statusColor(complaint!.status),
-                      borderRadius: BorderRadius.circular(20),
+              /// ================= INFO CARD =================
+              _sectionCard(
+                title: "Complaint Details",
+                child: Column(
+                  children: [
+                    _infoRow("Location", complaint!.location),
+                    _infoRow("Description", complaint!.description),
+                    _infoRow(
+                      "Submitted",
+                      complaint!.createdAt != null
+                          ? _formatDate(complaint!.createdAt!)
+                          : "N/A",
                     ),
-                    child: Text(
-                      complaint!.status,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _priorityColor(complaint!.priority),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      complaint!.priority,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
+                    _infoRow("Citizen", complaint!.citizenEmail),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              /// INFO ROWS
-              _infoRow("Location", complaint!.location),
-              _infoRow("Description", complaint!.description),
-              _infoRow(
-                "Submitted",
-                complaint!.createdAt != null
-                    ? _formatDate(complaint!.createdAt!)
-                    : "N/A",
-              ),
-              _infoRow("Citizen", complaint!.citizenEmail),
-
-              const SizedBox(height: 20),
-
-              /// BEFORE IMAGES
-              if (complaint!.beforeImages.isNotEmpty) ...[
-                const Text(
-                  "Complaint Photos",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: primaryBlue,
-                  ),
+              /// ================= IMAGES =================
+              if (complaint!.beforeImages.isNotEmpty)
+                _sectionCard(
+                  title: "Complaint Photos",
+                  child: _imageList(complaint!.beforeImages),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 110,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: complaint!.beforeImages.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          complaint!.beforeImages[index],
-                          width: 110,
-                          height: 110,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 110,
-                            height: 110,
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.broken_image,
-                                color: Colors.grey),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
 
-              /// AFTER IMAGES (resolution proof)
-              if (complaint!.afterImages.isNotEmpty) ...[
-                const Text(
-                  "Resolution Proof",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: primaryBlue,
-                  ),
+              if (complaint!.afterImages.isNotEmpty)
+                _sectionCard(
+                  title: "Resolution Proof",
+                  child: _imageList(complaint!.afterImages),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 110,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: complaint!.afterImages.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          complaint!.afterImages[index],
-                          width: 110,
-                          height: 110,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 110,
-                            height: 110,
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.broken_image,
-                                color: Colors.grey),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
 
-              /// ACTIONS
+              const SizedBox(height: 16),
+
+              /// ================= ACTIONS =================
               if (complaint!.status == "Approved" ||
-                  complaint!.status == "InProgress") ...[
-                const Text(
-                  "Actions",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: primaryBlue,
+                  complaint!.status == "InProgress")
+                _sectionCard(
+                  title: "Actions",
+                  child: Column(
+                    children: [
+                      if (complaint!.status == "Approved")
+                        _buildActionButton(),
+
+                      if (complaint!.status == "InProgress")
+                        _buildUploadButton(),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 10),
-
-                if (complaint!.status == "Approved")
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: isActionLoading
-                          ? null
-                          : () async {
-                              setState(() => isActionLoading = true);
-                              try {
-                                await DepartmentComplaintService()
-                                    .markInProgress(
-                                  complaint!.complaintId,
-                                  complaint!.citizenId,
-                                );
-                                setState(() {
-                                  complaint!.status = "InProgress";
-                                  isActionLoading = false;
-                                });
-                                await _refreshTimeline();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Status updated to In Progress"),
-                                    backgroundColor: Colors.blue,
-                                  ),
-                                );
-                              } catch (e) {
-                                setState(() => isActionLoading = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text("Error: $e"),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: isActionLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.autorenew),
-                      label: const Text(
-                        "Mark In Progress",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-
-                if (complaint!.status == "InProgress")
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          DepartmentRoutes.uploadProof,
-                          arguments: complaint,
-                        ).then((_) {
-                          // Refresh after returning from upload screen
-                          _loadComplaint();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.upload_file),
-                      label: const Text(
-                        "Upload Resolution Proof",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-              ],
 
               if (complaint!.status == "Resolved")
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.teal.shade200),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Icon(Icons.check_circle, color: Colors.teal),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          "This complaint has been resolved",
-                          softWrap: true,
-                        ),
+                _resolvedBanner(),
+
+              const SizedBox(height: 16),
+
+              /// ================= TIMELINE =================
+              _sectionCard(
+                title: "Activity Timeline",
+                child: timeline.isEmpty
+                    ? const Text(
+                        "No activity yet",
+                        style: TextStyle(color: Colors.grey),
+                      )
+                    : Column(
+                        children: timeline.map((event) {
+                          return _timelineItem(event);
+                        }).toList(),
                       ),
-                    ],
-                  )
-                ),
-
-              const SizedBox(height: 28),
-
-              /// TIMELINE SECTION
-              const Text(
-                "Activity Timeline",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: primaryBlue,
-                ),
               ),
-
-              const SizedBox(height: 12),
-
-              timeline.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "No activity yet",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: timeline.length,
-                        itemBuilder: (context, index) {
-                          final event = timeline[index];
-                          final isLast = index == timeline.length - 1;
-
-                          return IntrinsicHeight(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                /// Dot + line
-                                Column(
-                                  children: [
-                                    Container(
-                                      width: 14,
-                                      height: 14,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: _timelineColor(event.status),
-                                      ),
-                                    ),
-                                    if (!isLast)
-                                      Expanded(
-                                        child: Container(
-                                          width: 2,
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-
-                                const SizedBox(width: 14),
-
-                                /// Content
-                                Expanded(
-                                  child: Padding(
-                                    padding:
-                                        EdgeInsets.only(bottom: isLast ? 0 : 20),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          event.status,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: _timelineColor(event.status),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          event.message,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _formatDate(event.timestamp),
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
 
               const SizedBox(height: 20),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: isActionLoading
+            ? null
+            : () async {
+                setState(() => isActionLoading = true);
+                try {
+                  await DepartmentComplaintService()
+                      .markInProgress(complaint!.complaintId, complaint!.citizenId);
+                  setState(() {
+                    complaint!.status = "InProgress";
+                    isActionLoading = false;
+                  });
+                  await _refreshTimeline();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Status updated to In Progress"),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                } catch (e) {
+                  setState(() => isActionLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Error: $e"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        icon: isActionLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.autorenew),
+        label: const Text(
+          "Mark In Progress",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            DepartmentRoutes.uploadProof,
+            arguments: complaint,
+          ).then((_) {
+            // Refresh after returning from upload screen
+            _loadComplaint();
+          });
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        icon: const Icon(Icons.upload_file),
+        label: const Text(
+          "Upload Resolution Proof",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _resolvedBanner() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.teal.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.teal.shade200),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.check_circle, color: Colors.teal),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "This complaint has been resolved",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.teal,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

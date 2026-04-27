@@ -164,9 +164,29 @@ class AuthService {
 
       // 🔥 FETCH ROLE + DEPARTMENT ID (ONLY ADDITION)
       DocumentSnapshot doc =
-          await _firestore.collection('users').doc(result.user!.uid).get();
+    await _firestore.collection('users').doc(result.user!.uid).get();
 
-      Map<String, dynamic> data = Map<String, dynamic>.from(doc.data() as Map);
+    if (!doc.exists) {
+      await _auth.signOut();
+      return {
+        'success': false,
+        'error': 'User profile not found',
+      };
+    }
+
+    Map<String, dynamic> data =
+        Map<String, dynamic>.from(doc.data() as Map);
+
+    // 🔴 NEW: ACTIVE CHECK
+    final isActive = data['isActive'] ?? true; // default true if not set
+
+    if (!isActive) {
+      await _auth.signOut();
+      return {
+        'success': false,
+        'error': 'Your account has been deactivated. Contact admin.',
+      };
+    }
 
       return {
         'success': true,

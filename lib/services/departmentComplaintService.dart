@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/complaint.dart';
 import '../models/TimelineEvent.dart';
-import 'cloudinary_service.dart';
+
 
 class DepartmentComplaintService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
