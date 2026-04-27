@@ -49,17 +49,17 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
 
       if (departmentId == null) return;
 
-      // Department name
       departmentName =
           await DepartmentService().getDepartmentName(departmentId);
 
-      // Complaints
       complaints = await DepartmentComplaintService()
           .getAssignedComplaints(departmentId);
 
       setState(() {
-        newCount = complaints.where((c) => c.status == "Pending").length;
-        activeCount = complaints.where((c) => c.status == "Approved").length;
+        newCount =
+            complaints.where((c) => c.status == "Pending").length;
+        activeCount =
+            complaints.where((c) => c.status == "Approved").length;
         progressCount =
             complaints.where((c) => c.status == "InProgress").length;
         resolvedCount =
@@ -75,6 +75,7 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<DepartmentProvider>();
 
     return Scaffold(
       backgroundColor: lightGrey,
@@ -82,9 +83,7 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
       /// ---------------- AppBar ----------------
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           departmentName,
           style: const TextStyle(
@@ -97,106 +96,169 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
         elevation: 0,
       ),
 
-      /// ---------------- Drawer ----------------
-      // drawer: departmentDrawer(context, departmentName),
-
       /// ---------------- Body ----------------
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// ---- Section: Overview ----
-            const Text(
-              "Overview",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                DashboardCard(
-                  title: "New",
-                  count: newCount.toString(),
-                  color: Color(0xFFFFA726),
-                ),
-                DashboardCard(
-                  title: "Active",
-                  count: activeCount.toString(),
-                  color: Color(0xFF1E88E5),
-                ),
-                DashboardCard(
-                  title: "In Progress",
-                  count: progressCount.toString(),
-                  color: Color(0xFF43A047),
-                ),
-                DashboardCard(
-                  title: "Resolved",
-                  count: resolvedCount.toString(),
-                  color: Color(0xFF00897B),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 28),
-
-            /// ---- Section: Recent Complaints ----
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Recent Complaints",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: primaryBlue,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, DepartmentRoutes.list);
-                  },
-                  child: const Text(
-                    "View All",
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// ---- Section: Overview ----
+                  const Text(
+                    "Overview",
                     style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: primaryBlue,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-            ...complaints.take(3).map((c) {
-              return ComplaintCard(
-                title: c.categoryName,
-                location: c.location,
-                date: c.createdAt?.toString().split(" ")[0] ?? "",
-                status: c.status,
-                priority: c.priority,
-                priorityColor: c.priority == "High" ? Colors.red : Colors.amber,
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    DepartmentRoutes.complaintDetail,
-                    arguments: c.complaintId,
-                  );
-                },
-              );
-            }).toList(),
-          ],
-        ),
-      ),
+                  GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      DashboardCard(
+                        title: "New",
+                        count: newCount.toString(),
+                        color: const Color(0xFFFFA726),
+                      ),
+                      DashboardCard(
+                        title: "Active",
+                        count: activeCount.toString(),
+                        color: const Color(0xFF1E88E5),
+                      ),
+                      DashboardCard(
+                        title: "In Progress",
+                        count: progressCount.toString(),
+                        color: const Color(0xFF43A047),
+                      ),
+                      DashboardCard(
+                        title: "Resolved",
+                        count: resolvedCount.toString(),
+                        color: const Color(0xFF00897B),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  /// ---- Section: Manage Users (officers only) ----
+                  if (provider.isOfficer) ...[
+                    const Text(
+                      "Administration",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.group_add,
+                              color: primaryBlue, size: 26),
+                        ),
+                        title: const Text(
+                          "Manage Department Users",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: primaryBlue,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "Create and manage users in your department",
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: primaryBlue),
+                        onTap: () {
+                          Navigator.pushNamed(
+                              context, DepartmentRoutes.manageUsers);
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+                  ],
+
+                  /// ---- Section: Recent Complaints ----
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Recent Complaints",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, DepartmentRoutes.list);
+                        },
+                        child: const Text(
+                          "View All",
+                          style: TextStyle(
+                            color: primaryBlue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  ...complaints.take(3).map((c) {
+                    return ComplaintCard(
+                      title: c.categoryName,
+                      location: c.location,
+                      date: c.createdAt?.toString().split(" ")[0] ?? "",
+                      status: c.status,
+                      priority: c.priority,
+                      priorityColor:
+                          c.priority == "High" ? Colors.red : Colors.amber,
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          DepartmentRoutes.complaintDetail,
+                          arguments: {
+                            'complaintId': c.complaintId,
+                            'source': 'dashboard',
+                          },
+                        );
+                      },
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
 
       /// ---------------- Bottom Nav ----------------
       bottomNavigationBar: departmentBottomNav(context, _currentIndex),
@@ -283,7 +345,7 @@ class ComplaintCard extends StatelessWidget {
     switch (status) {
       case "Approved":
         return Colors.green;
-      case "In Progress":
+      case "InProgress":
         return Colors.blue;
       case "Resolved":
         return Colors.teal;
@@ -352,8 +414,8 @@ class ComplaintCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       location,
-                      style:
-                          const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],

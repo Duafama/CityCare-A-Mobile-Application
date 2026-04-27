@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'department_navigation.dart';
 import 'department_routes.dart';
-import '../services/category_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/departmentComplaintService.dart';
 import '../models/complaint.dart';
@@ -20,43 +18,20 @@ class DepartmentComplaintList extends StatefulWidget {
 class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
   String selectedFilter = "All";
   String? sortOrder;
-  List<String> categories = ["All"];
-  String selectedCategory = "All";
+
+  /// Set via route argument when navigating from Categories screen
+  String? categoryFilter;
 
   static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);
 
   final List<String> filters = [
     "All",
-    "New",
+    "Pending",
     "Approved",
     "InProgress",
     "Resolved",
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    loadCategories();
-    loadComplaints(); // 🔥 CALL FUNCTION HERE
-  }
-
-  Future<void> loadCategories() async {
-    try {
-      final departmentId = context.read<DepartmentProvider>().departmentId;
-
-      if (departmentId == null) return;
-
-      final categoryList =
-          await CategoryService().getCategoriesByDepartment(departmentId);
-
-      setState(() {
-        categories = ["All", ...categoryList.map((c) => c.name)];
-      });
-    } catch (e) {
-      print(e);
-    }
-  }
 
   final List<Map<String, String>> sortOptions = [
     {"value": "date_new_old", "label": "Date: New → Old"},
@@ -66,22 +41,39 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
   ];
 
   List<Complaint> allComplaints = [];
-  List<Complaint> filteredComplaints = [];
+  bool isLoading = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['categoryFilter'] != null) {
+      categoryFilter = args['categoryFilter'];
+    }
+
+    if (isLoading) {
+      loadComplaints();
+    }
+  }
 
   Future<void> loadComplaints() async {
     try {
-      final departmentId = context.read<DepartmentProvider>().departmentId;
+      final departmentId =
+          context.read<DepartmentProvider>().departmentId;
 
       if (departmentId == null) return;
 
       final data = await DepartmentComplaintService()
-    .getAssignedComplaints(departmentId);
+          .getAssignedComplaints(departmentId);
 
       setState(() {
         allComplaints = data;
+        isLoading = false;
       });
     } catch (e) {
       print(e);
+      setState(() => isLoading = false);
     }
   }
 
@@ -94,223 +86,194 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
 
       /// ---------------- AppBar ----------------
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: categoryFilter != null,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          "Complaints",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          categoryFilter != null ? categoryFilter! : "Complaints",
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: primaryBlue,
         elevation: 0,
       ),
 
-      /// ---------------- Drawer ----------------
-      //   drawer: departmentDrawer(context),
-
       /// ---------------- Body ----------------
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// ---------------- FILTERS ----------------
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: filters.map((filter) {
-                  final bool isSelected = selectedFilter == filter;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(filter),
-                      selected: isSelected,
-                      selectedColor: primaryBlue,
-                      backgroundColor: lightGrey,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          selectedFilter = filter;
-                        });
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: categories.map((cat) {
-                  final isSelected = selectedCategory == cat;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(cat),
-                      selected: isSelected,
-                      selectedColor: primaryBlue,
-                      backgroundColor: lightGrey,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          selectedCategory = cat;
-                        });
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          /// ---------------- SORT DROPDOWN ----------------
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Sort by:",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: primaryBlue,
+                /// ---------------- STATUS FILTERS ----------------
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: filters.map((filter) {
+                        final bool isSelected = selectedFilter == filter;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(filter),
+                            selected: isSelected,
+                            selectedColor: primaryBlue,
+                            backgroundColor: lightGrey,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            onSelected: (_) {
+                              setState(() {
+                                selectedFilter = filter;
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(child: _buildSortDropdown()),
+
+                /// ---------------- SORT DROPDOWN ----------------
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const Text(
+                        "Sort by:",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildSortDropdown()),
+                    ],
+                  ),
+                ),
+
+                /// ---------------- COUNT ----------------
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "${filteredComplaints.length} Complaint${filteredComplaints.length != 1 ? 's' : ''} Found",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: primaryBlue,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                /// ---------------- COMPLAINT LIST ----------------
+                Expanded(
+                  child: filteredComplaints.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                size: 80,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                "No complaints found",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredComplaints.length,
+                          itemBuilder: (context, index) {
+                            final complaint = filteredComplaints[index];
+
+                            return ComplaintCard(
+                              title: complaint.categoryName,
+                              location: complaint.location,
+                              date: complaint.createdAt
+                                      ?.toString()
+                                      .split(" ")[0] ??
+                                  "",
+                              status: complaint.status,
+                              priority: complaint.priority,
+                              priorityColor: _priorityColor(complaint.priority),
+                              onTap: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  DepartmentRoutes.complaintDetail,
+                                  arguments: {
+                                    'complaintId': complaint.complaintId,
+                                    'source': 'list',
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
               ],
             ),
-          ),
-
-          /// ---------------- COUNT ----------------
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              "${filteredComplaints.length} Complaint${filteredComplaints.length != 1 ? 's' : ''} Found",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          /// ---------------- COMPLAINT LIST ----------------
-          Expanded(
-            child: filteredComplaints.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.inbox_outlined,
-                          size: 80,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "No complaints found",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredComplaints.length,
-                    itemBuilder: (context, index) {
-                      final complaint = filteredComplaints[index];
-
-                      return ComplaintCard(
-                        title: complaint.categoryName,
-                        location: complaint.location,
-                        date: complaint.createdAt?.toString().split(" ")[0] ?? "",
-                        status: complaint.status,
-                        priority: complaint.priority,
-                        priorityColor: _priorityColor(complaint.priority),
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            DepartmentRoutes.complaintDetail,
-                            arguments: complaint.complaintId,
-                          );
-                        },
-                      );
-                    }
-                  ),
-          ),
-        ],
-      ),
 
       /// ---------------- Bottom Nav ----------------
-      bottomNavigationBar: departmentBottomNav(context, 1),
+      bottomNavigationBar: departmentBottomNav(context, 2),
     );
   }
 
   List<Complaint> _getFilteredComplaints() {
-  List<Complaint> complaints = allComplaints.where((c) {
-    // ---------------- STATUS FILTER ----------------
-    final statusMatch = selectedFilter == "All" ||
-        c.status == selectedFilter;
+    List<Complaint> complaints = allComplaints.where((c) {
+      // ---------------- STATUS FILTER ----------------
+      final statusMatch =
+          selectedFilter == "All" || c.status == selectedFilter;
 
-    // ---------------- CATEGORY FILTER ----------------
-    final categoryMatch = selectedCategory == "All" ||
-        c.categoryName == selectedCategory;
+      // ---------------- CATEGORY FILTER (from Categories screen) ----------------
+      final categoryMatch =
+          categoryFilter == null || c.categoryName == categoryFilter;
 
-    return statusMatch && categoryMatch;
-  }).toList();
+      return statusMatch && categoryMatch;
+    }).toList();
 
-  // ---------------- SORTING ----------------
-  if (sortOrder != null) {
-    switch (sortOrder) {
-      case "priority_low_high":
-        complaints.sort((a, b) =>
-            _priorityValue(a.priority)
-                .compareTo(_priorityValue(b.priority)));
-        break;
+    // ---------------- SORTING ----------------
+    if (sortOrder != null) {
+      switch (sortOrder) {
+        case "priority_low_high":
+          complaints.sort((a, b) =>
+              _priorityValue(a.priority).compareTo(_priorityValue(b.priority)));
+          break;
 
-      case "priority_high_low":
-        complaints.sort((a, b) =>
-            _priorityValue(b.priority)
-                .compareTo(_priorityValue(a.priority)));
-        break;
+        case "priority_high_low":
+          complaints.sort((a, b) =>
+              _priorityValue(b.priority).compareTo(_priorityValue(a.priority)));
+          break;
 
-      case "date_new_old":
-        complaints.sort((a, b) =>
-            (b.createdAt ?? DateTime.now())
-                .compareTo(a.createdAt ?? DateTime.now()));
-        break;
+        case "date_new_old":
+          complaints.sort((a, b) =>
+              (b.createdAt ?? DateTime.now())
+                  .compareTo(a.createdAt ?? DateTime.now()));
+          break;
 
-      case "date_old_new":
-        complaints.sort((a, b) =>
-            (a.createdAt ?? DateTime.now())
-                .compareTo(b.createdAt ?? DateTime.now()));
-        break;
+        case "date_old_new":
+          complaints.sort((a, b) =>
+              (a.createdAt ?? DateTime.now())
+                  .compareTo(b.createdAt ?? DateTime.now()));
+          break;
+      }
     }
-  }
 
-  return complaints;
-}
+    return complaints;
+  }
 
   Widget _buildSortDropdown() {
     return DropdownButtonHideUnderline(
@@ -335,10 +298,6 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return "${date.month}/${date.day}/${date.year}";
   }
 
   Color _priorityColor(String priority) {
@@ -397,7 +356,7 @@ class ComplaintCard extends StatelessWidget {
         return Colors.blue;
       case "Resolved":
         return Colors.teal;
-      case "New":
+      case "Pending":
         return Colors.orange;
       default:
         return Colors.grey;

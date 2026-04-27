@@ -145,7 +145,10 @@ class _LoginScreenState extends State<LoginScreen> {
               return;
             }
           // 🔥 STORE IN PROVIDER
-          context.read<DepartmentProvider>().setDepartmentId(departmentId);
+          context.read<DepartmentProvider>().setDepartment(
+            departmentId!,
+            'officer',
+          );
 
           // 🔥 NAVIGATE (NO ARGUMENTS)
           Navigator.pushReplacementNamed(
