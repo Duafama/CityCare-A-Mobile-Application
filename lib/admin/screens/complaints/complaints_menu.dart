@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app_routes.dart';
 import '../../../models/complaint_enums.dart';
+import '../../admin_navigation.dart'; // 👈 import your nav file
 
 class ComplaintsMenuScreen extends StatefulWidget {
   const ComplaintsMenuScreen({super.key});
@@ -17,27 +18,27 @@ class _ComplaintsMenuScreenState extends State<ComplaintsMenuScreen> {
     {
       "status": ComplaintStatus.pending,
       "icon": Icons.hourglass_empty,
-      "color": Colors.orange
+      "color": Colors.orange,
     },
     {
       "status": ComplaintStatus.approved,
       "icon": Icons.check_circle,
-      "color": Colors.green
+      "color": Colors.green,
     },
     {
       "status": ComplaintStatus.inProgress,
       "icon": Icons.autorenew,
-      "color": Colors.blue
+      "color": Colors.blue,
     },
     {
       "status": ComplaintStatus.resolved,
       "icon": Icons.done_all,
-      "color": Colors.teal
+      "color": Colors.teal,
     },
     {
       "status": ComplaintStatus.rejected,
       "icon": Icons.cancel,
-      "color": Colors.red
+      "color": Colors.red,
     },
   ];
 
@@ -48,12 +49,22 @@ class _ComplaintsMenuScreenState extends State<ComplaintsMenuScreen> {
 
     return Scaffold(
       backgroundColor: lightGrey,
+
+      /// ✅ AppBar WITHOUT back button
       appBar: AppBar(
-        title: const Text("Complaints",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        automaticallyImplyLeading: false,
+        title: const Text(
+          "Complaints",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: primaryBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
+
+      /// ✅ Body
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -62,7 +73,10 @@ class _ComplaintsMenuScreenState extends State<ComplaintsMenuScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 "Complaint Status",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -80,24 +94,41 @@ class _ComplaintsMenuScreenState extends State<ComplaintsMenuScreen> {
                   final ComplaintStatus status = item["status"];
 
                   return InkWell(
+                    borderRadius: BorderRadius.circular(16),
                     onTap: () {
                       Navigator.pushNamed(
                         context,
                         AppRoutes.complaintList,
-                        arguments: status, // ✅ PASS ENUM ONLY
+                        arguments: status,
                       );
                     },
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(item["icon"], color: item["color"], size: 30),
+                          Icon(
+                            item["icon"],
+                            color: item["color"],
+                            size: 32,
+                          ),
                           const SizedBox(height: 10),
-                          Text(status.value),
+                          Text(
+                            status.value,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -108,6 +139,9 @@ class _ComplaintsMenuScreenState extends State<ComplaintsMenuScreen> {
           ],
         ),
       ),
+
+      /// ✅ Bottom Navigation (Complaints = index 1)
+      bottomNavigationBar: adminBottomNav(context, 1),
     );
   }
 }
