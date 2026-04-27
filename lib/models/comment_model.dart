@@ -9,8 +9,10 @@ class Comment {
   final DateTime createdAt;
   final bool isFlagged;
   final String? photoUrl;
+  final String? rootParentId;
   final int likes;
-  final String? parentId;  // null = main comment, not null = reply to main comment
+  final String?
+      parentId; // null = main comment, not null = reply to main comment
 
   Comment({
     required this.id,
@@ -21,30 +23,31 @@ class Comment {
     required this.createdAt,
     this.isFlagged = false,
     this.photoUrl,
+    this.rootParentId,
     this.likes = 0,
     this.parentId,
   });
 
   Map<String, dynamic> toJson() {
-  final map = <String, dynamic>{
-    'complaintId': complaintId,
-    'userId': userId,
-    'userName': userName,
-    'text': text,
-    'createdAt': Timestamp.fromDate(createdAt),
-    'isFlagged': isFlagged,
-    'photoUrl': photoUrl,
-    'likes': likes,
-    // ❌ 'parentId': parentId,  // Yeh hata do
-  };
+    final map = <String, dynamic>{
+      'complaintId': complaintId,
+      'userId': userId,
+      'userName': userName,
+      'text': text,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'isFlagged': isFlagged,
+      'photoUrl': photoUrl,
+      'likes': likes,
+      // ❌ 'parentId': parentId,  // Yeh hata do
+    };
 
-  // ✅ Sirf tab add karo jab reply ho
-  if (parentId != null) {
-    map['parentId'] = parentId;
+    // ✅ Sirf tab add karo jab reply ho
+    if (parentId != null) {
+      map['parentId'] = parentId;
+    }
+
+    return map;
   }
-
-  return map;
-}
 
   factory Comment.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
