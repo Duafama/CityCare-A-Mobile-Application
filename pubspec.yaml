@@ -12,6 +12,7 @@ dependencies:
   permission_handler: ^11.0.1
   geocoding: ^2.2.1  # 👈 YEH ADD KAREIN
   http: ^1.1.0
+  profanity_filter: ^2.0.0 #comment moderation
   flutter:
   
   
@@ -20,7 +21,7 @@ dependencies:
     sdk: flutter
     
   cupertino_icons: ^1.0.8
-  google_fonts: ^6.2.1
+  google_fonts: ^5.1.0
 
    
 

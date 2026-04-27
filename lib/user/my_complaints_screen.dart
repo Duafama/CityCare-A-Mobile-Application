@@ -488,14 +488,15 @@ class _MyComplaintsContentState extends State<MyComplaintsContent> {
                         child: IconButton(
                           icon: const Icon(Icons.edit_outlined, 
                               color: Color(0xFF0F1A3D)),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => EditComplaintScreen(complaint: complaint),
-                              ),
-                            );
-                          },
+                          onPressed: () async {
+                                        await Navigator.push(
+                                               context,
+                                               MaterialPageRoute(
+                                          builder: (context) => EditComplaintScreen(complaint: complaint),
+                                          ),
+                                  );
+                                   setState(() {}); //  Force refresh
+                                    },
                         ),
                       ),
                       const SizedBox(width: 8),
