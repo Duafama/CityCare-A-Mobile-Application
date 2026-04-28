@@ -66,6 +66,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
         const SnackBar(content: Text('⚠️ Comment reported to admin.'), backgroundColor: Colors.orange),
       );
       _commentController.clear();
+      
       return;
     }
 
@@ -86,6 +87,14 @@ class _CommentsScreenState extends State<CommentsScreen> {
 
     await FirebaseFirestore.instance.collection('comments').doc(comment.id).set(comment.toJson());
     _commentController.clear();
+    // 🔥 ADD THIS BLOCK
+  await FirebaseFirestore.instance
+      .collection('complaints')
+      .doc(complaintId)
+      .update({
+    'commentCount': FieldValue.increment(1),
+  });
+
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('✅ Comment posted!'), backgroundColor: Colors.green),
@@ -131,7 +140,13 @@ class _CommentsScreenState extends State<CommentsScreen> {
     await FirebaseFirestore.instance.collection('comments').doc(reply.id).set(reply.toJson());
     _replyController.clear();
     setState(() => _replyingToId = null);
-
+// Reply save hone ke baad
+await FirebaseFirestore.instance
+    .collection('complaints')
+    .doc(complaintId)
+    .update({
+  'commentCount': FieldValue.increment(1),
+});
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('✅ Reply posted!'), backgroundColor: Colors.green),
     );
