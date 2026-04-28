@@ -12,7 +12,7 @@ import '../services/cloudinary_service.dart';
 
 class EditComplaintScreen extends StatefulWidget {
   final Map<String, dynamic> complaint;
-  
+
   const EditComplaintScreen({super.key, required this.complaint});
 
   @override
@@ -26,11 +26,9 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
   List<String> _selectedImages = [];
   bool _isSaving = false;
 
-  // 🔥 Categories from Firestore
   List<Map<String, dynamic>> _categories = [];
   bool _isLoadingCategories = true;
 
-  // Map variables
   GoogleMapController? _mapController;
   LatLng? _selectedLocation;
   bool _isLoadingLocation = false;
@@ -39,57 +37,55 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
   @override
   void initState() {
     super.initState();
-    
-    _descriptionController = TextEditingController(
-      text: widget.complaint['description'] ?? ''
-    );
-    _locationController = TextEditingController(
-      text: widget.complaint['location'] ?? ''
-    );
+    _descriptionController = TextEditingController(text: widget.complaint['description'] ?? '');
+    _locationController = TextEditingController(text: widget.complaint['location'] ?? '');
     _selectedCategory = widget.complaint['categoryName'] ?? widget.complaint['category'] ?? 'Other';
-    _selectedImages = List<String>.from(
-      widget.complaint['beforeImages'] ?? widget.complaint['images'] ?? []
-    );
-    
+    _selectedImages = List<String>.from(widget.complaint['beforeImages'] ?? widget.complaint['images'] ?? []);
     _loadCategories();
-    
-    // Existing location se marker set karo
     double? lat = widget.complaint['latitude'];
     double? lng = widget.complaint['longitude'];
     if (lat != null && lng != null) {
       _selectedLocation = LatLng(lat, lng);
       _updateMarker();
     }
-    
     _checkLocationPermission();
   }
 
-  // 🔥 Load categories from Firestore (Same as SubmitScreen)
   Future<void> _loadCategories() async {
     try {
+      setState(() => _isLoadingCategories = true);
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('categories')
-          .orderBy('name')
+          .where('status', isEqualTo: 'active')
           .get();
-      
-      List<Map<String, dynamic>> loadedCategories = snapshot.docs.map((doc) {
-        return {
-          'id': doc.id,
-          'name': doc['name'],
-        };
-      }).toList();
-      
-      // Add 'Other' if not present
-      if (!loadedCategories.any((c) => c['name'] == 'Other')) {
-        loadedCategories.add({'id': 'other', 'name': 'Other'});
+
+      if (snapshot.docs.isEmpty) {
+        QuerySnapshot allDocs = await FirebaseFirestore.instance.collection('categories').get();
+        List<Map<String, dynamic>> activeCategories = [];
+        for (var doc in allDocs.docs) {
+          String status = doc['status'] ?? '';
+          if (status.toLowerCase() == 'active') {
+            activeCategories.add({'id': doc.id, 'name': doc['name']});
+          }
+        }
+        setState(() {
+          _categories = activeCategories;
+          _isLoadingCategories = false;
+        });
+        if (!_categories.any((c) => c['name'] == 'Other')) {
+          setState(() => _categories.add({'id': 'other', 'name': 'Other'}));
+        }
+        return;
       }
-      
+
       setState(() {
-        _categories = loadedCategories;
+        _categories = snapshot.docs.map((doc) => {'id': doc.id, 'name': doc['name']}).toList();
         _isLoadingCategories = false;
       });
+      if (!_categories.any((c) => c['name'] == 'Other')) {
+        setState(() => _categories.add({'id': 'other', 'name': 'Other'}));
+      }
     } catch (e) {
-      print('Error loading categories: $e');
       setState(() {
         _categories = [{'id': 'other', 'name': 'Other'}];
         _isLoadingCategories = false;
@@ -99,40 +95,26 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
 
   Future<void> _checkLocationPermission() async {
     var status = await Permission.location.status;
-    if (status.isDenied) {
-      status = await Permission.location.request();
-    }
+    if (status.isDenied) await Permission.location.request();
   }
 
   Future<void> _getCurrentLocation() async {
     try {
       setState(() => _isLoadingLocation = true);
-      
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       final latLng = LatLng(position.latitude, position.longitude);
-      
       setState(() {
         _selectedLocation = latLng;
         _updateMarker();
         _locationController.text = 'Getting address...';
       });
-      
       final address = await _getAddressFromLatLng(latLng);
-      
       setState(() {
         _locationController.text = address;
         _isLoadingLocation = false;
       });
-      
       if (_mapController != null) {
-        _mapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: _selectedLocation!, zoom: 15),
-          ),
-        );
+        _mapController!.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: _selectedLocation!, zoom: 15)));
       }
     } catch (e) {
       setState(() => _isLoadingLocation = false);
@@ -142,20 +124,12 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
 
   Future<String> _getAddressFromLatLng(LatLng latLng) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        latLng.latitude, 
-        latLng.longitude,
-      );
-      
+      List<Placemark> placemarks = await placemarkFromCoordinates(latLng.latitude, latLng.longitude);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
-        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
-          return place.subLocality!;
-        } else if (place.locality != null && place.locality!.isNotEmpty) {
-          return place.locality!;
-        } else if (place.name != null && place.name!.isNotEmpty) {
-          return place.name!;
-        }
+        if (place.subLocality != null && place.subLocality!.isNotEmpty) return place.subLocality!;
+        if (place.locality != null && place.locality!.isNotEmpty) return place.locality!;
+        if (place.name != null && place.name!.isNotEmpty) return place.name!;
         return '${place.street}, ${place.locality}';
       }
       return 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
@@ -167,13 +141,8 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
   void _updateMarker() {
     if (_selectedLocation != null) {
       _markers.clear();
-      _markers.add(
-        Marker(
-          markerId: const MarkerId('selected_location'),
-          position: _selectedLocation!,
-          infoWindow: const InfoWindow(title: 'Complaint Location'),
-        ),
-      );
+      _markers.add(Marker(markerId: const MarkerId('selected_location'), position: _selectedLocation!,
+          infoWindow: const InfoWindow(title: 'Complaint Location')));
     }
   }
 
@@ -182,94 +151,67 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
       _showSnackBar('Please enter a description');
       return;
     }
-    
     if (_locationController.text.isEmpty) {
       _showSnackBar('Please enter a location');
       return;
     }
-    
     if (_selectedImages.isEmpty) {
       _showSnackBar('Please add at least one image');
       return;
     }
-    
     setState(() => _isSaving = true);
-    
     try {
       String complaintId = widget.complaint['complaintId'] ?? widget.complaint['id'];
-      
       Map<String, dynamic> updateData = {
         'description': _descriptionController.text.trim(),
         'location': _locationController.text.trim(),
         'categoryName': _selectedCategory,
-        'beforeImages': _selectedImages,  // 👈 ADD THIS LINE
+        'beforeImages': _selectedImages,
         'updatedAt': FieldValue.serverTimestamp(),
       };
-      
       if (_selectedLocation != null) {
         updateData['latitude'] = _selectedLocation!.latitude;
         updateData['longitude'] = _selectedLocation!.longitude;
       }
-      
-      await FirebaseFirestore.instance
-          .collection('complaints')
-          .doc(complaintId)
-          .update(updateData);
-      
+      await FirebaseFirestore.instance.collection('complaints').doc(complaintId).update(updateData);
       if (mounted) {
         _showSnackBar('Complaint updated successfully!');
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) {
-        _showSnackBar('Error: ${e.toString()}');
-      }
+      if (mounted) _showSnackBar('Error: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green));
   }
 
   Future<void> _addImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    
     if (pickedFile == null) return;
-    
     setState(() => _isSaving = true);
-    
     try {
       File imageFile = File(pickedFile.path);
       final imageUrl = await CloudinaryService.uploadImage(imageFile);
-      
       if (imageUrl != null && mounted) {
-        setState(() {
-          _selectedImages.add(imageUrl);
-        });
+        setState(() => _selectedImages.add(imageUrl));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image uploaded successfully!'), backgroundColor: Colors.green),
-        );
+            const SnackBar(content: Text('Image uploaded successfully!'), backgroundColor: Colors.green));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error uploading image: ${e.toString()}'), backgroundColor: Colors.red),
-      );
+          SnackBar(content: Text('Error uploading image: ${e.toString()}'), backgroundColor: Colors.red));
     } finally {
       setState(() => _isSaving = false);
     }
   }
 
   void _removeImage(int index) {
-    setState(() {
-      _selectedImages.removeAt(index);
-    });
+    setState(() => _selectedImages.removeAt(index));
     _showSnackBar('Image removed! (Save to update)');
   }
 
@@ -289,14 +231,8 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
         backgroundColor: const Color(0xFF0F1A3D),
         elevation: 0,
         centerTitle: true,
-        title: Text(
-          'Edit Complaint',
-          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: Text('Edit Complaint', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
         actions: [
           IconButton(
             onPressed: _isSaving ? null : _saveChanges,
@@ -314,69 +250,44 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, spreadRadius: 2)],
-              ),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, spreadRadius: 2)]),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Edit Complaint Details', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
                   const SizedBox(height: 20),
-
-                  // Category Dropdown - Dynamic from Firestore
-                 // Category Dropdown - Submit screen jaisa style
-_buildLabel('Category:'),
-const SizedBox(height: 8),
-Container(
-  decoration: BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(12),
-    border: Border.all(color: Colors.grey[300]!),
-  ),
-  child: _isLoadingCategories
-      ? const Padding(
-          padding: EdgeInsets.all(16),
-          child: Center(child: CircularProgressIndicator()),
-        )
-      : DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _selectedCategory,
-            isExpanded: true,
-            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF4A6FFF)),
-            items: [
-              const DropdownMenuItem<String>(
-                value: 'Select a Category',
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('Select a Category', style: TextStyle(color: Colors.grey)),
-                ),
-              ),
-              ..._categories.map((category) {
-                return DropdownMenuItem<String>(
-                  value: category['name'],
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      category['name'],
-                      style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF0F1A3D)),
-                    ),
+                  _buildLabel('Category:'),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[300]!)),
+                    child: _isLoadingCategories
+                        ? const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
+                        : DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _categories.any((cat) => cat['name'] == _selectedCategory) ? _selectedCategory : null,
+                              isExpanded: true,
+                              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF4A6FFF)),
+                              items: [
+                                const DropdownMenuItem<String>(
+                                  value: 'Select a Category',
+                                  child: Padding(padding: EdgeInsets.symmetric(horizontal: 16),
+                                      child: Text('Select a Category', style: TextStyle(color: Colors.grey))),
+                                ),
+                                ..._categories.map((category) => DropdownMenuItem<String>(
+                                      value: category['name'],
+                                      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
+                                          child: Text(category['name'], style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF0F1A3D)))),
+                                    )),
+                              ],
+                              onChanged: (String? newValue) {
+                                if (newValue != null) setState(() => _selectedCategory = newValue);
+                              },
+                            ),
+                          ),
                   ),
-                );
-              }),
-         
-                      
-                            ],
-                    onChanged: (String? newValue) {
-                     setState(() => _selectedCategory = newValue!);
-                      },
-                      ),
-                    ),
-                    ),
                   const SizedBox(height: 20),
-                  
-                  // Description
                   _buildLabel('Description:'),
                   const SizedBox(height: 8),
                   Container(
@@ -394,8 +305,6 @@ Container(
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Location with Map
                   _buildLabel('Location:'),
                   const SizedBox(height: 8),
                   Container(
@@ -423,78 +332,54 @@ Container(
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Google Map Widget
                   _buildMapSection(),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Images Section
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, spreadRadius: 2)],
-              ),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, spreadRadius: 2)]),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Complaint Images', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
                   const SizedBox(height: 15),
-
                   if (_selectedImages.isNotEmpty) ...[
                     Text('Current Images (${_selectedImages.length}):', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D))),
                     const SizedBox(height: 10),
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 1,
-                      ),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1),
                       itemCount: _selectedImages.length,
-                      itemBuilder: (context, index) {
-                        return Stack(
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                image: DecorationImage(image: NetworkImage(_selectedImages[index]), fit: BoxFit.cover),
-                              ),
+                      itemBuilder: (context, index) => Stack(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              image: DecorationImage(image: NetworkImage(_selectedImages[index]), fit: BoxFit.cover),
                             ),
-                            Positioned(
-                              top: 4, right: 4,
-                              child: GestureDetector(
-                                onTap: () => _removeImage(index),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                  child: const Icon(Icons.close, size: 14, color: Colors.white),
-                                ),
-                              ),
+                          ),
+                          Positioned(
+                            top: 4, right: 4,
+                            child: GestureDetector(
+                              onTap: () => _removeImage(index),
+                              child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                  child: const Icon(Icons.close, size: 14, color: Colors.white)),
                             ),
-                          ],
-                        );
-                      },
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 15),
                   ],
-
-                  // Add Image Button
                   Container(
                     width: double.infinity,
                     height: 50,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF4A6FFF), Color(0xFF5BC0DE)]),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF4A6FFF), Color(0xFF5BC0DE)]), borderRadius: BorderRadius.circular(12)),
                     child: ElevatedButton(
                       onPressed: _addImage,
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white, shadowColor: Colors.transparent),
@@ -511,18 +396,12 @@ Container(
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Save Button
             Container(
               width: double.infinity,
               height: 55,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF4A6FFF), Color(0xFF5BC0DE)]),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: const Color(0xFF4A6FFF).withOpacity(0.3), blurRadius: 10, spreadRadius: 2)],
-              ),
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF4A6FFF), Color(0xFF5BC0DE)]), borderRadius: BorderRadius.circular(12),
+                  boxShadow: [BoxShadow(color: const Color(0xFF4A6FFF).withOpacity(0.3), blurRadius: 10, spreadRadius: 2)]),
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _saveChanges,
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Colors.white, shadowColor: Colors.transparent),
@@ -547,22 +426,14 @@ Container(
   Widget _buildMapSection() {
     return Container(
       height: 250,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[300]!)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Stack(
           children: [
             GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _selectedLocation ?? const LatLng(31.5204, 74.3587),
-                zoom: _selectedLocation != null ? 15 : 12,
-              ),
-              onMapCreated: (GoogleMapController controller) {
-                _mapController = controller;
-              },
+              initialCameraPosition: CameraPosition(target: _selectedLocation ?? const LatLng(31.5204, 74.3587), zoom: _selectedLocation != null ? 15 : 12),
+              onMapCreated: (GoogleMapController controller) => _mapController = controller,
               markers: _markers,
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
@@ -574,18 +445,11 @@ Container(
                   _updateMarker();
                 });
                 final address = await _getAddressFromLatLng(latLng);
-                setState(() {
-                  _locationController.text = address;
-                });
+                setState(() => _locationController.text = address);
               },
             ),
-            
             if (_isLoadingLocation)
-              Container(
-                color: Colors.black.withOpacity(0.3),
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-            
+              Container(color: Colors.black.withOpacity(0.3), child: const Center(child: CircularProgressIndicator())),
             Positioned(
               top: 10,
               left: 10,
@@ -608,7 +472,5 @@ Container(
     );
   }
 
-  Widget _buildLabel(String text) {
-    return Text(text, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D)));
-  }
+  Widget _buildLabel(String text) => Text(text, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D)));
 }
