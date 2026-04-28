@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // ADD THIS IMPORT
 import 'package:city_care/services/user_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -106,52 +109,55 @@ class AuthService {
 
 //Creating department Officer
   Future<Map<String, dynamic>> createDepartmentOfficer({
-    required String name,
-    required String email,
-    required String password,
-    required String phone,
-    required String departmentId,
-  }) async {
-    try {
-      // 🔥 IMPORTANT: isolate auth session
-      final secondaryAuth = FirebaseAuth.instanceFor(
-        app: FirebaseAuth.instance.app,
-      );
+  required String name,
+  required String email,
+  required String password,
+  required String phone,
+  required String departmentId,
+}) async {
+  try {
+    final apiKey = dotenv.env['WEB_API_KEY'];
 
-      // Create officer WITHOUT affecting admin session
-      UserCredential result =
-          await secondaryAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password.trim(),
-      );
+    final url =
+        "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey";
 
-      User? user = result.user;
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": email.trim(),
+        "password": password.trim(),
+        "returnSecureToken": false
+      }),
+    );
 
-      if (user != null) {
-        await user.updateDisplayName(name);
+    final data = jsonDecode(response.body);
 
-        await _userService.saveUserData(
-          uid: user.uid,
-          name: name,
-          email: email,
-          phone: phone,
-          paymentMethod: "N/A",
-          registrationFee: 0.0,
-          profileImageUrl: null,
-          departmentId: departmentId,
-        );
-
-        // 🔥 IMPORTANT: logout secondary auth only
-        await secondaryAuth.signOut();
-
-        return {"success": true, "user": user};
-      }
-
-      return {"success": false, "error": "User creation failed"};
-    } catch (e) {
-      return {"success": false, "error": e.toString()};
+    if (data["error"] != null) {
+      return {
+        "success": false,
+        "error": data["error"]["message"]
+      };
     }
+
+    final uid = data["localId"];
+
+    await FirebaseFirestore.instance.collection("users").doc(uid).set({
+      "uid": uid,
+      "name": name,
+      "email": email,
+      "phone": phone,
+      "departmentId": departmentId,
+      "userType": "department_officer",
+      "isActive": true,
+      "createdAt": FieldValue.serverTimestamp(),
+    });
+
+    return {"success": true, "uid": uid};
+  } catch (e) {
+    return {"success": false, "error": e.toString()};
   }
+}
 
   // Login method
   // Login method

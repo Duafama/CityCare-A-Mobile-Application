@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../models/complaint.dart';
 import '../models/TimelineEvent.dart';
-import '../providers/department_provider.dart';
+
 import '../services/departmentComplaintService.dart';
 import 'department_routes.dart';
 

@@ -20,9 +20,7 @@ import 'screens/management/manage_departments.dart';
 import 'screens/management/add_department.dart';
 import 'screens/management/manage_categories.dart';
 import 'screens/management/add_category.dart';
-import 'screens/management/category_detail.dart';
 import 'screens/management/manage_users.dart';
-import 'screens/management/user_detail.dart';
 import 'screens/management/flagged_comments.dart';
 import 'screens/management/comment_detail.dart';
 

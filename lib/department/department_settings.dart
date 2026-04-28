@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../providers/department_provider.dart';
 import 'department_navigation.dart';
-import 'package:city_care/user/welcome_screen.dart'; // update path if needed
+import 'package:city_care/user/welcome_screen.dart';
 
 class DepartmentSettingsScreen extends StatefulWidget {
   const DepartmentSettingsScreen({super.key});
@@ -16,12 +20,60 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
   static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);
 
-  bool notificationsEnabled = true;
-  bool emailAlerts = true;
-  bool smsAlerts = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String userName = "";
+  String userEmail = "";
+  String departmentName = "";
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfile();
+    });
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final user = _auth.currentUser;
+      final departmentId =
+          context.read<DepartmentProvider>().departmentId;
+
+      if (user == null) return;
+
+      // Load user doc
+      final userDoc =
+          await _firestore.collection('users').doc(user.uid).get();
+
+      // Load department name
+      String deptName = "";
+      if (departmentId != null) {
+        final deptDoc = await _firestore
+            .collection('departments')
+            .doc(departmentId)
+            .get();
+        deptName = deptDoc.data()?['name'] ?? "";
+      }
+
+      setState(() {
+        userName = userDoc.data()?['name'] ?? user.displayName ?? "Officer";
+        userEmail = user.email ?? "";
+        departmentName = deptName;
+        isLoading = false;
+      });
+    } catch (e) {
+      print(e);
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<DepartmentProvider>();
+
     return Scaffold(
       backgroundColor: lightGrey,
 
@@ -38,245 +90,163 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
         elevation: 0,
       ),
 
-      /// ---------------- Drawer ----------------
-      //   drawer: departmentDrawer(context),
-
       /// ---------------- Body ----------------
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// -------- PROFILE SECTION --------
-            const Text(
-              "Profile",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            Container(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: primaryBlue.withOpacity(0.1),
-                    child: const Icon(Icons.apartment,
-                        color: primaryBlue, size: 40),
+                  /// -------- PROFILE CARD --------
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundColor: primaryBlue.withOpacity(0.1),
+                          child: Text(
+                            userName.isNotEmpty
+                                ? userName[0].toUpperCase()
+                                : "?",
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: primaryBlue,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 16),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userName,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                userEmail,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              if (departmentName.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: primaryBlue.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    departmentName,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: primaryBlue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (provider.isOfficer) ...[
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    "Officer",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  /// -------- ACCOUNT --------
+                  const Text(
+                    "Account",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: primaryBlue,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    "Sanitation Department",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+
+                  _buildActionCard(
+                    icon: Icons.lock_outline,
+                    title: "Change Password",
+                    color: primaryBlue,
+                    onTap: _showChangePasswordDialog,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "sanitation@citycare.com",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+
+                  const SizedBox(height: 8),
+
+                  _buildActionCard(
+                    icon: Icons.help_outline,
+                    title: "Help & Support",
+                    color: primaryBlue,
+                    onTap: _showHelpDialog,
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        _showEditProfileDialog();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: primaryBlue,
-                        side: const BorderSide(color: primaryBlue),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.edit),
-                      label: const Text(
-                        "Edit Profile",
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
+
+                  const SizedBox(height: 8),
+
+                  _buildActionCard(
+                    icon: Icons.info_outline,
+                    title: "About",
+                    color: primaryBlue,
+                    onTap: _showAboutDialog,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  _buildActionCard(
+                    icon: Icons.logout,
+                    title: "Logout",
+                    color: Colors.red,
+                    onTap: () => _showLogoutDialog(context),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 28),
-
-            // /// -------- NOTIFICATIONS SECTION --------
-            // const Text(
-            //   "Notifications",
-            //   style: TextStyle(
-            //     fontSize: 18,
-            //     fontWeight: FontWeight.bold,
-            //     color: primaryBlue,
-            //   ),
-            // ),
-            // const SizedBox(height: 12),
-
-            // _buildSettingCard(
-            //   icon: Icons.notifications,
-            //   title: "Push Notifications",
-            //   subtitle: "Receive push notifications for new complaints",
-            //   value: notificationsEnabled,
-            //   onChanged: (val) {
-            //     setState(() {
-            //       notificationsEnabled = val;
-            //     });
-            //   },
-            // ),
-
-            // const SizedBox(height: 8),
-
-            // _buildSettingCard(
-            //   icon: Icons.email,
-            //   title: "Email Alerts",
-            //   subtitle: "Receive email notifications",
-            //   value: emailAlerts,
-            //   onChanged: (val) {
-            //     setState(() {
-            //       emailAlerts = val;
-            //     });
-            //   },
-            // ),
-
-            // const SizedBox(height: 8),
-
-            // _buildSettingCard(
-            //   icon: Icons.sms,
-            //   title: "SMS Alerts",
-            //   subtitle: "Receive SMS notifications",
-            //   value: smsAlerts,
-            //   onChanged: (val) {
-            //     setState(() {
-            //       smsAlerts = val;
-            //     });
-            //   },
-            // ),
-
-            // const SizedBox(height: 28),
-
-            /// -------- ACCOUNT SECTION --------
-            const Text(
-              "Account",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            _buildActionCard(
-              icon: Icons.lock,
-              title: "Change Password",
-              color: primaryBlue,
-              onTap: () {
-                _showChangePasswordDialog();
-              },
-            ),
-
-            const SizedBox(height: 8),
-
-            _buildActionCard(
-              icon: Icons.help,
-              title: "Help & Support",
-              color: primaryBlue,
-              onTap: () {
-                _showHelpDialog();
-              },
-            ),
-
-            const SizedBox(height: 8),
-
-            _buildActionCard(
-              icon: Icons.info,
-              title: "About",
-              color: primaryBlue,
-              onTap: () {
-                _showAboutDialog();
-              },
-            ),
-
-            const SizedBox(height: 8),
-
-            _buildActionCard(
-              icon: Icons.logout,
-              title: "Logout",
-              color: Colors.red,
-              onTap: () {
-                _showLogoutDialog(context);
-              },
-            ),
-          ],
-        ),
-      ),
 
       /// ---------------- Bottom Nav ----------------
       bottomNavigationBar: departmentBottomNav(context, _currentIndex),
-    );
-  }
-
-  Widget _buildSettingCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required Function(bool) onChanged,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: SwitchListTile(
-        secondary: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: primaryBlue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: primaryBlue),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(fontSize: 13),
-        ),
-        value: value,
-        activeThumbColor: primaryBlue,
-        onChanged: onChanged,
-      ),
     );
   }
 
@@ -305,7 +275,7 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: color),
+          child: Icon(icon, color: color, size: 20),
         ),
         title: Text(
           title,
@@ -314,63 +284,206 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
             color: color,
           ),
         ),
-        trailing: Icon(Icons.chevron_right, color: color),
+        trailing: Icon(Icons.chevron_right, color: color, size: 20),
         onTap: onTap,
       ),
     );
   }
 
-  void _showEditProfileDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          "Edit Profile",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: const Text("Profile editing feature coming soon!"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ── CHANGE PASSWORD ─────────────────────────────────────────
   void _showChangePasswordDialog() {
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+    bool isSaving = false;
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          "Change Password",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: const Text("Password change feature coming soon!"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: const Text(
+                "Change Password",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _passwordField(
+                    controller: currentController,
+                    label: "Current Password",
+                    obscure: obscureCurrent,
+                    toggle: () => setDialogState(
+                        () => obscureCurrent = !obscureCurrent),
+                  ),
+                  const SizedBox(height: 12),
+                  _passwordField(
+                    controller: newController,
+                    label: "New Password",
+                    obscure: obscureNew,
+                    toggle: () =>
+                        setDialogState(() => obscureNew = !obscureNew),
+                  ),
+                  const SizedBox(height: 12),
+                  _passwordField(
+                    controller: confirmController,
+                    label: "Confirm New Password",
+                    obscure: obscureNew,
+                    toggle: () =>
+                        setDialogState(() => obscureNew = !obscureNew),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isSaving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text("Cancel",
+                      style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          if (newController.text.trim() !=
+                              confirmController.text.trim()) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Passwords do not match"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (newController.text.trim().length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    "Password must be at least 6 characters"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isSaving = true);
+
+                          try {
+                            final user = _auth.currentUser!;
+                            final cred = EmailAuthProvider.credential(
+                              email: user.email!,
+                              password: currentController.text.trim(),
+                            );
+
+                            // Re-authenticate then update
+                            await user.reauthenticateWithCredential(cred);
+                            await user.updatePassword(
+                                newController.text.trim());
+
+                            if (!mounted) return;
+                            Navigator.pop(dialogContext);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text("Password updated successfully"),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } on FirebaseAuthException catch (e) {
+                            setDialogState(() => isSaving = false);
+                            String msg = "Something went wrong";
+                            if (e.code == 'wrong-password') {
+                              msg = "Current password is incorrect";
+                            } else if (e.code == 'weak-password') {
+                              msg = "New password is too weak";
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(msg),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: primaryBlue),
+                        )
+                      : const Text(
+                          "Update",
+                          style: TextStyle(
+                            color: primaryBlue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _passwordField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+    required VoidCallback toggle,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: lightGrey,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscure,
+        decoration: InputDecoration(
+          hintText: label,
+          prefixIcon:
+              const Icon(Icons.lock_outline, color: primaryBlue, size: 20),
+          suffixIcon: IconButton(
+            icon: Icon(
+              obscure ? Icons.visibility_off : Icons.visibility,
+              color: Colors.grey,
+              size: 20,
+            ),
+            onPressed: toggle,
           ),
-        ],
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          border: InputBorder.none,
+        ),
       ),
     );
   }
 
+  // ── HELP ───────────────────────────────────────────────────
   void _showHelpDialog() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           "Help & Support",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          "For support, please contact:\n\nEmail: support@citycare.com\nPhone: +1-234-567-8900",
+          "For support, please contact:\n\nEmail: support@citycare.com\nPhone: +92-300-0000000",
         ),
         actions: [
           TextButton(
@@ -382,11 +495,13 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
     );
   }
 
+  // ── ABOUT ──────────────────────────────────────────────────
   void _showAboutDialog() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           "About",
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -404,11 +519,13 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
     );
   }
 
+  // ── LOGOUT ─────────────────────────────────────────────────
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: const [
             Icon(Icons.logout, color: Colors.red),
@@ -429,17 +546,26 @@ class _DepartmentSettingsScreenState extends State<DepartmentSettingsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context); // close the dialog
+            onPressed: () async {
+              Navigator.pop(context);
+
+              // Clear provider
+              context.read<DepartmentProvider>().clear();
+
+              // Sign out Firebase
+              await _auth.signOut();
+
+              if (!mounted) return;
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => WelcomeScreen()),
-                (route) => false, // remove all previous routes
+                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                (route) => false,
               );
             },
             child: const Text(
               "Logout",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.red, fontWeight: FontWeight.bold),
             ),
           ),
         ],

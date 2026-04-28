@@ -3,7 +3,6 @@ import 'department_navigation.dart';
 import 'department_routes.dart';
 import '../services/departmentComplaintService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/complaint.dart';
 import '../services/department_service.dart';
 import 'package:provider/provider.dart';

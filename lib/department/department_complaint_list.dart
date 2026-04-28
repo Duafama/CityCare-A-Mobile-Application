@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'department_navigation.dart';
 import 'department_routes.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/departmentComplaintService.dart';
 import '../models/complaint.dart';
 import 'package:provider/provider.dart';

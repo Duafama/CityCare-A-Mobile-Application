@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../providers/department_provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class DepartmentUsersScreen extends StatefulWidget {
   const DepartmentUsersScreen({super.key});
@@ -21,6 +24,26 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
 
   List<Map<String, dynamic>> departmentUsers = [];
   bool isLoading = true;
+
+  /// ---------------- VALIDATIONS ----------------
+  String? validateName(String value) {
+    if (value.trim().isEmpty) return "Name is required";
+    if (value.trim().length < 2) return "Name too short";
+    return null;
+  }
+
+  String? validateEmail(String value) {
+    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+    if (value.trim().isEmpty) return "Email is required";
+    if (!emailRegex.hasMatch(value.trim())) return "Invalid email format";
+    return null;
+  }
+
+  String? validatePassword(String value) {
+    if (value.isEmpty) return "Password is required";
+    if (value.length < 6) return "Min 6 characters required";
+    return null;
+  }
 
   @override
   void initState() {
@@ -53,7 +76,6 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
         isLoading = false;
       });
     } catch (e) {
-      print(e);
       setState(() => isLoading = false);
     }
   }
@@ -62,8 +84,11 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
+
     bool isCreating = false;
     bool obscurePassword = true;
+
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -85,50 +110,53 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
                   ),
                 ],
               ),
+
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    /// NAME
-                    _dialogField(
-                      controller: nameController,
-                      label: "Full Name",
-                      icon: Icons.person,
-                    ),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
 
-                    const SizedBox(height: 14),
-
-                    /// EMAIL
-                    _dialogField(
-                      controller: emailController,
-                      label: "Email Address",
-                      icon: Icons.email,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    /// PASSWORD
-                    Container(
-                      decoration: BoxDecoration(
-                        color: lightGrey,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade300),
+                      /// NAME
+                      TextFormField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: "Full Name",
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                        validator: (value) =>
+                            validateName(value ?? ""),
                       ),
-                      child: TextField(
+
+                      const SizedBox(height: 14),
+
+                      /// EMAIL
+                      TextFormField(
+                        controller: emailController,
+                        decoration: const InputDecoration(
+                          labelText: "Email Address",
+                          prefixIcon: Icon(Icons.email),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) =>
+                            validateEmail(value ?? ""),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      /// PASSWORD
+                      TextFormField(
                         controller: passwordController,
                         obscureText: obscurePassword,
                         decoration: InputDecoration(
-                          hintText: "Password",
-                          prefixIcon: const Icon(Icons.lock,
-                              color: primaryBlue, size: 20),
+                          labelText: "Password",
+                          prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
                             icon: Icon(
                               obscurePassword
                                   ? Icons.visibility_off
                                   : Icons.visibility,
-                              color: Colors.grey,
-                              size: 20,
                             ),
                             onPressed: () {
                               setDialogState(() {
@@ -136,50 +164,85 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
                               });
                             },
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          border: InputBorder.none,
                         ),
+                        validator: (value) =>
+                            validatePassword(value ?? ""),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+
               actions: [
                 TextButton(
                   onPressed: isCreating
                       ? null
                       : () => Navigator.pop(dialogContext),
-                  child: const Text(
-                    "Cancel",
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                  child: const Text("Cancel"),
                 ),
+
                 TextButton(
                   onPressed: isCreating
                       ? null
                       : () async {
-                          final name = nameController.text.trim();
-                          final email = emailController.text.trim();
-                          final password = passwordController.text.trim();
 
-                          if (name.isEmpty ||
-                              email.isEmpty ||
-                              password.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Please fill all fields"),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                          /// 🔥 VALIDATE FORM
+                          if (!formKey.currentState!.validate()) {
                             return;
                           }
 
                           setDialogState(() => isCreating = true);
 
                           try {
-                            await _createDepartmentUser(
-                                name, email, password);
+                            final departmentId =
+                                context
+                                    .read<DepartmentProvider>()
+                                    .departmentId!;
+
+                            final apiKey =
+                                dotenv.env['WEB_API_KEY'];
+
+                            if (apiKey == null) {
+                              throw Exception("API Key missing");
+                            }
+
+                            final response = await http.post(
+                              Uri.parse(
+                                "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey",
+                              ),
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: jsonEncode({
+                                "email": emailController.text.trim(),
+                                "password":
+                                    passwordController.text.trim(),
+                                "returnSecureToken": false
+                              }),
+                            );
+
+                            final data = jsonDecode(response.body);
+
+                            if (data["error"] != null) {
+                              throw Exception(
+                                  data["error"]["message"]);
+                            }
+
+                            final uid = data["localId"];
+
+                            await FirebaseFirestore.instance
+                                .collection("users")
+                                .doc(uid)
+                                .set({
+                              "uid": uid,
+                              "name": nameController.text.trim(),
+                              "email": emailController.text.trim(),
+                              "departmentId": departmentId,
+                              "userType": "departmentUser",
+                              "isActive": true,
+                              "createdAt":
+                                  FieldValue.serverTimestamp(),
+                            });
 
                             if (!mounted) return;
                             Navigator.pop(dialogContext);
@@ -187,7 +250,7 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                    "Department user created successfully"),
+                                    "Department user created"),
                                 backgroundColor: Colors.green,
                               ),
                             );
@@ -195,6 +258,7 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
                             _loadUsers();
                           } catch (e) {
                             setDialogState(() => isCreating = false);
+
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text("Error: $e"),
@@ -208,15 +272,10 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: primaryBlue),
-                        )
-                      : const Text(
-                          "Create",
-                          style: TextStyle(
-                            color: primaryBlue,
-                            fontWeight: FontWeight.bold,
+                            strokeWidth: 2,
                           ),
-                        ),
+                        )
+                      : const Text("Create"),
                 ),
               ],
             );
@@ -226,109 +285,8 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
     );
   }
 
-  Widget _dialogField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: lightGrey,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          hintText: label,
-          prefixIcon: Icon(icon, color: primaryBlue, size: 20),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          border: InputBorder.none,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _createDepartmentUser(
-      String name, String email, String password) async {
-    final departmentId =
-        context.read<DepartmentProvider>().departmentId;
-
-    if (departmentId == null) {
-      throw Exception("Department not found");
-    }
-
-    /// Create Firebase Auth account for the new user
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    final uid = credential.user!.uid;
-
-    /// Save user document with role = 'departmentUser'
-    await _firestore.collection('users').doc(uid).set({
-      'uid': uid,
-      'name': name,
-      'email': email,
-      'departmentId': departmentId,
-      'userType': 'departmentUser',
-      'isActive': true,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  void _showDeleteConfirm(String uid, String name) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.delete_outline, color: Colors.red),
-            SizedBox(width: 10),
-            Text(
-              "Remove User",
-              style:
-                  TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
-        content: Text(
-          "Are you sure you want to remove $name from this department?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _firestore.collection('users').doc(uid).update({
-                'isActive': false,
-              });
-              _loadUsers();
-            },
-            child: const Text(
-              "Remove",
-              style: TextStyle(
-                  color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _toggleUserStatus(String uid, bool currentStatus) async {
+  Future<void> _toggleUserStatus(
+      String uid, bool currentStatus) async {
     await _firestore.collection('users').doc(uid).update({
       'isActive': !currentStatus,
     });
@@ -341,172 +299,42 @@ class _DepartmentUsersScreenState extends State<DepartmentUsersScreen> {
     return Scaffold(
       backgroundColor: lightGrey,
 
-      /// ---------------- AppBar ----------------
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Manage Department Users",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: primaryBlue,
-        elevation: 0,
       ),
 
-      /// ---------------- FAB ----------------
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateUserDialog,
         backgroundColor: primaryBlue,
-        icon: const Icon(Icons.person_add, color: Colors.white),
-        label: const Text(
-          "Add User",
-          style: TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        icon: const Icon(Icons.person_add),
+        label: const Text("Add User"),
       ),
 
-      /// ---------------- Body ----------------
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : departmentUsers.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.group_off,
-                          size: 80, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        "No department users yet",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Tap the button below to create one",
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: departmentUsers.length,
+              itemBuilder: (context, index) {
+                final user = departmentUsers[index];
+
+                return ListTile(
+                  title: Text(user['name'] ?? ""),
+                  subtitle: Text(user['email'] ?? ""),
+                  trailing: Switch(
+                    value: user['isActive'] ?? true,
+                    onChanged: (val) =>
+                        _toggleUserStatus(user['uid'], val),
                   ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${departmentUsers.length} User${departmentUsers.length != 1 ? 's' : ''}",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: primaryBlue,
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      Expanded(
-                        child: ListView.separated(
-                          itemCount: departmentUsers.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final user = departmentUsers[index];
-                            final name = user['name'] ?? "Unknown";
-                            final email = user['email'] ?? "";
-                            final isActive = user['isActive'] ?? true;
-
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                leading: CircleAvatar(
-                                  backgroundColor:
-                                      primaryBlue.withOpacity(0.1),
-                                  child: Text(
-                                    name.isNotEmpty
-                                        ? name[0].toUpperCase()
-                                        : "?",
-                                    style: const TextStyle(
-                                      color: primaryBlue,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                title: Text(
-                                  name,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Text(
-                                  email,
-                                  style: const TextStyle(
-                                      fontSize: 13, color: Colors.black54),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () =>
-                                          _toggleUserStatus(user['uid'], isActive),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isActive
-                                              ? Colors.green.withOpacity(0.1)
-                                              : Colors.red.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          isActive ? "Active" : "Inactive",
-                                          style: TextStyle(
-                                            color: isActive
-                                                ? Colors.green
-                                                : Colors.red,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.red,
-                                          size: 20),
-                                      onPressed: () =>
-                                          _showDeleteConfirm(user['uid'], name),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                );
+              },
+            ),
     );
   }
 }
