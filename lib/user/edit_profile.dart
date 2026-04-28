@@ -212,7 +212,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: const Color(0xFF0F1A3D),
         centerTitle: true,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -251,7 +251,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(0xFF1A237E),
+                                color: const Color(0xFF0F1A3D),
                                 width: 3,
                               ),
                               boxShadow: [
@@ -384,7 +384,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: ElevatedButton(
                           onPressed: _isUpdating ? null : _updateProfile,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A237E),
+                            backgroundColor: const Color(0xFF0F1A3D),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
@@ -457,7 +457,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey[600]),
-        prefixIcon: Icon(icon, color: const Color(0xFF1A237E)),
+        prefixIcon: Icon(icon, color: const Color(0xFF0F1A3D)),
         filled: true,
         fillColor: enabled ? Colors.white : Colors.grey[100],
         border: OutlineInputBorder(
@@ -470,7 +470,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF0F1A3D), width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),

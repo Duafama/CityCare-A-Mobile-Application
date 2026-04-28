@@ -181,7 +181,7 @@ void _showLogoutDialog(BuildContext context) {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A237E),
+                  color: Color(0xFF0F1A3D),
                 ),
               ),
               
@@ -276,7 +276,7 @@ void _showLogoutDialog(BuildContext context) {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: const Color(0xFF1A237E), // Dark blue
+        backgroundColor: const Color(0xFF0F1A3D), // Dark blue
         centerTitle: true,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -296,7 +296,7 @@ void _showLogoutDialog(BuildContext context) {
                   Container(
                     height: 200,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A237E),
+                      color: const Color(0xFF0F1A3D),
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(30),
                         bottomRight: Radius.circular(30),
@@ -359,7 +359,7 @@ void _showLogoutDialog(BuildContext context) {
                                       child: Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF4A6FFF),
+                                          color: const Color(0xFF0F1A3D),
                                           shape: BoxShape.circle,
                                           border: Border.all(color: Colors.white, width: 2),
                                         ),
@@ -562,12 +562,12 @@ void _showLogoutDialog(BuildContext context) {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A237E).withOpacity(0.1),
+              color: const Color(0xFF0F1A3D).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
-              color: const Color(0xFF1A237E),
+              color: const Color(0xFF0F1A3D),
               size: 22,
             ),
           ),
