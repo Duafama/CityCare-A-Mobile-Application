@@ -323,89 +323,160 @@ Future<void> _loadCategories() async {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                //Modern dropdown
                 _buildSectionTitle('Category:'),
                 const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
+               Container(
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.grey.withOpacity(0.05),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
+    ],
+  ),
+  child: _isLoadingCategories
+      ? const Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF4A6FFF),
+            ),
+          ),
+        )
+      : DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _selectedCategory,
+            isExpanded: true,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A6FFF).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: const Icon(
+                Icons.arrow_drop_down, 
+                color: Color(0xFF4A6FFF),
+                size: 24,
+              ),
+            ),
+            iconSize: 32,
+            dropdownColor: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            elevation: 4,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF0F1A3D),
+            ),
+            items: [
+              DropdownMenuItem<String>(
+                value: 'Select a Category',
+                enabled: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.category_outlined, color: Colors.grey[400], size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Select a Category',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: _isLoadingCategories
-                      ? const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF4A6FFF),
-                            ),
-                          ),
-                        )
-                      : DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedCategory,
-                            isExpanded: true,
-                            icon: const Icon(Icons.arrow_drop_down,
-                                color: Color(0xFF4A6FFF)),
-                            items: [
-                              const DropdownMenuItem<String>(
-                                value: 'Select a Category',
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text(
-                                    'Select a Category',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              ..._categories.map((category) {
-                                return DropdownMenuItem<String>(
-                                  value: category['name'],
-                                  child: Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text(
-                                      category['name'],
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 15,
-                                        color: const Color(0xFF0F1A3D),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }),
-                              const DropdownMenuItem<String>(
-                                value: 'Other',
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text(
-                                    'Other',
-                                    style: TextStyle(
-                                      color: Color(0xFF4A6FFF),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedCategory = newValue!;
-                                if (newValue != 'Select a Category' && newValue != 'Other') {
-                                  final selectedCat = _categories.firstWhere(
-                                    (cat) => cat['name'] == newValue,
-                                    orElse: () => {},
-                                  );
-                                  _selectedCategoryId = selectedCat['id'];
-                                } else {
-                                  _selectedCategoryId = null;
-                                }
-                              });
-                            },
+                ),
+              ),
+              ..._categories.map((category) {
+                return DropdownMenuItem<String>(
+                  value: category['name'],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4A6FFF),
+                            shape: BoxShape.circle,
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            category['name'],
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              color: const Color(0xFF0F1A3D),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        if (category['name'] == _selectedCategory)
+                          const Icon(Icons.check_circle, color: Color(0xFF4A6FFF), size: 18),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              DropdownMenuItem<String>(
+                value: 'Other',
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4A6FFF),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Other',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            color: const Color(0xFF4A6FFF),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (_selectedCategory == 'Other')
+                        const Icon(Icons.check_circle, color: Color(0xFF4A6FFF), size: 18),
+                    ],
+                  ),
                 ),
+              ),
+            ],
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedCategory = newValue!;
+                if (newValue != 'Select a Category' && newValue != 'Other') {
+                  final selectedCat = _categories.firstWhere(
+                    (cat) => cat['name'] == newValue,
+                    orElse: () => {},
+                  );
+                  _selectedCategoryId = selectedCat['id'];
+                } else {
+                  _selectedCategoryId = null;
+                }
+              });
+            },
+          ),
+        ),
+),
                 const SizedBox(height: 20),
 
                 _buildSectionTitle('Description:'),

@@ -145,6 +145,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // 🔥 FETCH USER NAME FROM FIRESTORE
+  Future<String> _getUserName(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (userDoc.exists) {
+        String name = userDoc['name'] ?? '';
+        if (name.isNotEmpty) {
+          return name;
+        }
+      }
+      return '';
+    } catch (e) {
+      print('Error fetching user name: $e');
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -346,9 +367,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   );
                 }
 
-                // 🔥 FIX: Added key to preserve scroll position
                 return ListView.builder(
-                  key: const PageStorageKey('dashboard_feed_list'),  // 👈 YEH LINE ADD KI HAI
+                  key: const PageStorageKey('dashboard_feed_list'),
                   padding: const EdgeInsets.only(bottom: 70),
                   itemCount: filteredComplaints.length,
                   itemBuilder: (context, index) {
@@ -404,8 +424,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String status = complaint['status'] ?? 'Pending';
     Color statusColor = _getStatusColor(status);
     String citizenId = complaint['citizenId'] ?? '';
-    String userEmail = complaint['citizenEmail'] ?? 'Anonymous';
-    String userName = userEmail.split('@')[0];
     String timeAgo = _getTimeAgo(complaint['createdAt']);
     
     // Before images (complaint images)
@@ -452,9 +470,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return CircleAvatar(
                         backgroundColor: const Color(0xFF4A6FFF),
                         radius: 20,
-                        child: Text(
-                          userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        child: FutureBuilder<String>(
+                          future: _getUserName(citizenId),
+                          builder: (context, nameSnapshot) {
+                            String displayName = '';
+                            String initial = 'U';
+                            
+                            if (nameSnapshot.hasData && nameSnapshot.data!.isNotEmpty) {
+                              displayName = nameSnapshot.data!;
+                              initial = displayName[0].toUpperCase();
+                            } else {
+                              // Fallback to email if name not found
+                              String userEmail = complaint['citizenEmail'] ?? 'Anonymous';
+                              displayName = userEmail.split('@')[0];
+                              initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+                            }
+                            
+                            return Text(
+                              initial,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            );
+                          },
                         ),
                       );
                     }
@@ -465,7 +501,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(userName, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D))),
+                      // 🔥 USER NAME - Fetch from Firestore or use email fallback
+                      FutureBuilder<String>(
+                        future: _getUserName(citizenId),
+                        builder: (context, nameSnapshot) {
+                          String displayName = '';
+                          
+                          if (nameSnapshot.hasData && nameSnapshot.data!.isNotEmpty) {
+                            displayName = nameSnapshot.data!;
+                          } else {
+                            String userEmail = complaint['citizenEmail'] ?? 'Anonymous';
+                            displayName = userEmail.split('@')[0];
+                          }
+                          
+                          return Text(
+                            displayName,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF0F1A3D),
+                            ),
+                          );
+                        },
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -474,7 +532,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Expanded(
                             child: Text(
                               complaint['location'] ?? 'No location',
-                              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
