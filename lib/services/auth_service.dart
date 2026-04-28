@@ -113,7 +113,14 @@ class AuthService {
     required String departmentId,
   }) async {
     try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
+      // 🔥 IMPORTANT: isolate auth session
+      final secondaryAuth = FirebaseAuth.instanceFor(
+        app: FirebaseAuth.instance.app,
+      );
+
+      // Create officer WITHOUT affecting admin session
+      UserCredential result =
+          await secondaryAuth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
@@ -133,6 +140,9 @@ class AuthService {
           profileImageUrl: null,
           departmentId: departmentId,
         );
+
+        // 🔥 IMPORTANT: logout secondary auth only
+        await secondaryAuth.signOut();
 
         return {"success": true, "user": user};
       }
@@ -164,29 +174,28 @@ class AuthService {
 
       // 🔥 FETCH ROLE + DEPARTMENT ID (ONLY ADDITION)
       DocumentSnapshot doc =
-    await _firestore.collection('users').doc(result.user!.uid).get();
+          await _firestore.collection('users').doc(result.user!.uid).get();
 
-    if (!doc.exists) {
-      await _auth.signOut();
-      return {
-        'success': false,
-        'error': 'User profile not found',
-      };
-    }
+      if (!doc.exists) {
+        await _auth.signOut();
+        return {
+          'success': false,
+          'error': 'User profile not found',
+        };
+      }
 
-    Map<String, dynamic> data =
-        Map<String, dynamic>.from(doc.data() as Map);
+      Map<String, dynamic> data = Map<String, dynamic>.from(doc.data() as Map);
 
-    // 🔴 NEW: ACTIVE CHECK
-    final isActive = data['isActive'] ?? true; // default true if not set
+      // 🔴 NEW: ACTIVE CHECK
+      final isActive = data['isActive'] ?? true; // default true if not set
 
-    if (!isActive) {
-      await _auth.signOut();
-      return {
-        'success': false,
-        'error': 'Your account has been deactivated. Contact admin.',
-      };
-    }
+      if (!isActive) {
+        await _auth.signOut();
+        return {
+          'success': false,
+          'error': 'Your account has been deactivated. Contact admin.',
+        };
+      }
 
       return {
         'success': true,

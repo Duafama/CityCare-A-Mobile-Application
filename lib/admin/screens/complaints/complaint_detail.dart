@@ -15,7 +15,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   String? docId;
   String? selectedDept;
+  String? selectedDeptId;
   String? selectedCategory;
+  String? selectedCategoryId;
 
   List<String> departments = [];
   List<Map<String, dynamic>> categories = [];
@@ -26,8 +28,14 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    docId = ModalRoute.of(context)!.settings.arguments as String;
+    final args = ModalRoute.of(context)?.settings.arguments;
 
+    if (args == null || args is! String) {
+      setState(() => loading = false);
+      return;
+    }
+
+    docId = args;
     _load();
     _loadDepartments();
     _loadCategories();
@@ -35,42 +43,60 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   // ===================== LOAD =====================
   Future<void> _load() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('complaints')
-        .doc(docId)
-        .get();
-
-    final complaintData = doc.data();
-
-    String? deptName = complaintData?['departmentName'];
-
-    // 🔥 If missing → derive from category
-    if ((deptName == null || deptName.isEmpty) &&
-        complaintData?['categoryId'] != null) {
-      final catDoc = await FirebaseFirestore.instance
-          .collection('categories')
-          .doc(complaintData!['categoryId'])
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(docId)
           .get();
 
-      final deptId = catDoc.data()?['departmentId'];
+      final complaintData = doc.data();
 
-      if (deptId != null) {
-        final deptDoc = await FirebaseFirestore.instance
-            .collection('departments')
-            .doc(deptId)
+      if (complaintData == null) {
+        setState(() => loading = false);
+        return;
+      }
+
+      String? deptName = complaintData['departmentName'];
+      String? deptId = complaintData['departmentId'];
+      String? categoryName = complaintData['categoryName'];
+
+      // ✅ HANDLE "OTHER" SAFELY
+      final isOther = categoryName == null || categoryName == "Other";
+
+      if (!isOther &&
+          (deptId == null || deptId.isEmpty) &&
+          complaintData['categoryId'] != null) {
+        final catDoc = await FirebaseFirestore.instance
+            .collection('categories')
+            .doc(complaintData['categoryId'])
             .get();
 
-        deptName = deptDoc.data()?['name'];
+        final derivedDeptId = catDoc.data()?['departmentId'];
+
+        if (derivedDeptId != null) {
+          final deptDoc = await FirebaseFirestore.instance
+              .collection('departments')
+              .doc(derivedDeptId)
+              .get();
+
+          deptName = deptDoc.data()?['name'];
+          deptId = derivedDeptId;
+        }
       }
+
+      setState(() {
+        data = complaintData;
+
+        selectedCategory = categoryName ?? "Other";
+        selectedDept = deptName;
+        selectedDeptId = deptId;
+
+        loading = false;
+      });
+    } catch (e) {
+      print("LOAD ERROR: $e");
+      setState(() => loading = false);
     }
-
-    setState(() {
-      data = complaintData;
-      loading = false;
-
-      selectedCategory = complaintData?['categoryName'];
-      selectedDept = deptName;
-    });
   }
 
   // ===================== LOAD DEPARTMENTS =====================
@@ -91,7 +117,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
         .get();
 
     setState(() {
-      categories = snap.docs.map((doc) {
+      categories = snap.docs.where((doc) => doc['name'] != "Other").map((doc) {
         return {
           "id": doc.id,
           "name": doc['name'],
@@ -104,7 +130,19 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   // ===================== UPDATE STATUS =====================
   Future<void> _updateStatus(String status) async {
     await _service.updateComplaintStatus(docId!, status);
-
+    await FirebaseFirestore.instance
+        .collection('complaints')
+        .doc(docId)
+        .update({
+      "status": status,
+      "categoryId": (selectedCategory != null &&
+              categories.any((c) => c['name'] == selectedCategory))
+          ? categories.firstWhere((c) => c['name'] == selectedCategory)['id']
+          : data!['categoryId'],
+      "categoryName": selectedCategory ?? data!['categoryName'],
+      "departmentId": selectedDeptId ?? data!['departmentId'],
+      "departmentName": selectedDept ?? data!['departmentName'],
+    });
     setState(() => data!['status'] = status);
   }
 
@@ -112,28 +150,15 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   Future<void> _updateCategory(String categoryName) async {
     final selected = categories.firstWhere(
       (c) => c['name'] == categoryName,
-      orElse: () => {},
     );
-
-    if (selected.isEmpty) return;
 
     final categoryId = selected['id'];
     final deptId = selected['departmentId'];
-
-    if (deptId == null || deptId.toString().isEmpty) {
-      print("❌ Department ID missing in category");
-      return;
-    }
 
     final deptDoc = await FirebaseFirestore.instance
         .collection('departments')
         .doc(deptId)
         .get();
-
-    if (!deptDoc.exists) {
-      print("❌ Department not found in Firestore");
-      return;
-    }
 
     final deptName = deptDoc.data()?['name'] ?? '';
 
@@ -149,10 +174,15 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
     setState(() {
       selectedCategory = categoryName;
+      selectedCategoryId = categoryId;
+
       selectedDept = deptName;
+      selectedDeptId = deptId;
 
       data!['categoryName'] = categoryName;
+      data!['categoryId'] = categoryId;
       data!['departmentName'] = deptName;
+      data!['departmentId'] = deptId;
     });
   }
 
@@ -171,6 +201,20 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
+
+              final isInvalidCategory =
+                  selectedCategory == null || selectedCategory == "Other";
+
+              if (isInvalidCategory) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content:
+                        Text("Please select a valid category before approval"),
+                  ),
+                );
+                return;
+              }
+
               _updateStatus(action);
             },
             child: Text(action),

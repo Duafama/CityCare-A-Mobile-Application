@@ -53,14 +53,47 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
 
   // ---------------- SAVE ----------------
   Future<void> _save() async {
-    await _firestore.collection('categories').doc(widget.categoryId).update({
+    if (selectedDeptId == null) return;
+
+    final batch = _firestore.batch();
+
+    // 1. Get selected department data
+    final deptDoc =
+        await _firestore.collection('departments').doc(selectedDeptId).get();
+
+    final deptData = deptDoc.data() as Map<String, dynamic>;
+    final deptName = deptData['name'];
+
+    // 2. Update category
+    final categoryRef =
+        _firestore.collection('categories').doc(widget.categoryId);
+
+    batch.update(categoryRef, {
       "name": _nameController.text.trim(),
       "departmentId": selectedDeptId,
+      "departmentName": deptName,
     });
 
+    // 3. Update all complaints linked to this category
+    final complaintSnap = await _firestore
+        .collection('complaints')
+        .where('categoryId', isEqualTo: widget.categoryId)
+        .get();
+
+    for (var doc in complaintSnap.docs) {
+      batch.update(doc.reference, {
+        "departmentId": selectedDeptId,
+        "departmentName": deptName,
+      });
+    }
+
+    await batch.commit();
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Category updated")),
+      const SnackBar(content: Text("Category & complaints updated")),
     );
+
+    setState(() {});
   }
 
   // ---------------- TOGGLE CATEGORY ----------------

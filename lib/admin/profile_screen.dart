@@ -19,22 +19,21 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final int _currentIndex = 3;
-
   static const Color primaryBlue = Color(0xFF0A1F44);
   static const Color lightGrey = Color(0xFFF4F6F8);
 
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
 
-  File? profileImage;
-
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
 
+  File? profileImage;
   bool isSaving = false;
 
-  /// Pick Image
+  bool _initialized = false;
+
+  /// ---------------- IMAGE PICK ----------------
   Future pickImage(ImageSource source) async {
     final image = await ImagePicker().pickImage(source: source);
     if (image != null) {
@@ -74,13 +73,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Save Changes
+  /// ---------------- SAVE PROFILE ----------------
   Future<void> _saveChanges(String uid) async {
     setState(() => isSaving = true);
 
     String? imageUrl;
 
-    /// Upload image if changed
     if (profileImage != null) {
       imageUrl = await CloudinaryService.uploadImage(profileImage!);
 
@@ -97,28 +95,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => isSaving = false);
 
-    _showSuccessDialog();
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Success"),
+        content: const Text("Profile updated successfully"),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
-  /// Logout with confirmation
+  /// ---------------- LOGOUT ----------------
   void _logout() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Confirm Logout"),
         content: const Text("Are you sure you want to logout?"),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text("Cancel"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryBlue,
-            ),
             onPressed: () async {
               Navigator.pop(ctx);
               await _authService.logout();
@@ -136,136 +140,137 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Success"),
-        content: const Text("Profile updated successfully"),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
+  /// ---------------- SAFE CONTROLLER FILL ----------------
+  void _fillControllers(Map<String, dynamic> data) {
+    nameController.text = data['name'] ?? '';
+    phoneController.text = data['phone'] ?? '';
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    User? user = _authService.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text("User not logged in")),
+        body: Center(
+          child: Text("Session expired. Please login again."),
+        ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: lightGrey,
-      appBar: AppBar(
-        title: const Text("Profile", style: TextStyle(color: Colors.white)),
-        backgroundColor: primaryBlue,
-        centerTitle: true,
-        iconTheme: const IconThemeData(
-          color: Colors.white, // ☰ menu icon color
+    return WillPopScope(
+      onWillPop: () async => true, // ❌ prevents accidental logout
+      child: Scaffold(
+        backgroundColor: lightGrey,
+        appBar: AppBar(
+          title: const Text("Profile", style: TextStyle(color: Colors.white)),
+          backgroundColor: primaryBlue,
+          centerTitle: true,
+          iconTheme: const IconThemeData(color: Colors.white),
         ),
+        drawer: adminDrawer(context),
+        body: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final data = snapshot.data!.data() as Map<String, dynamic>;
+
+            /// Fill controllers ONLY ONCE
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!_initialized) {
+                _fillControllers(data);
+                _initialized = true;
+              }
+            });
+
+            final email = data['email'] ?? '';
+            final role = data['userType'] ?? '';
+            final imageUrl = data['profileImageUrl'] ?? '';
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  /// PROFILE IMAGE
+                  GestureDetector(
+                    onTap: _showImageSourceDialog,
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundColor: primaryBlue.withOpacity(0.2),
+                      backgroundImage: profileImage != null
+                          ? FileImage(profileImage!)
+                          : (imageUrl.isNotEmpty
+                              ? NetworkImage(imageUrl)
+                              : null) as ImageProvider?,
+                      child: profileImage == null && imageUrl.isEmpty
+                          ? const Icon(Icons.person,
+                              size: 60, color: primaryBlue)
+                          : null,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _buildTextField("Name", nameController, Icons.person),
+
+                  const SizedBox(height: 12),
+
+                  _buildTextField("Phone", phoneController, Icons.phone),
+
+                  const SizedBox(height: 12),
+
+                  _buildReadOnly("Email", email),
+
+                  const SizedBox(height: 12),
+
+                  _buildReadOnly("Role", role),
+
+                  const SizedBox(height: 20),
+
+                  ElevatedButton(
+                    onPressed: isSaving ? null : () => _saveChanges(user.uid),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: isSaving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("Save Changes"),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  OutlinedButton(
+                    onPressed: _logout,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text("Logout"),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        bottomNavigationBar: adminBottomNav(context, 3),
       ),
-      drawer: adminDrawer(context),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-
-          if (nameController.text.isEmpty) {
-            nameController.text = data['name'] ?? '';
-          }
-
-          if (phoneController.text.isEmpty) {
-            phoneController.text = data['phone'] ?? '';
-          }
-
-          String email = data['email'] ?? '';
-          String role = data['userType'] ?? '';
-          String imageUrl = data['profileImageUrl'] ?? '';
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                /// Profile Image
-                GestureDetector(
-                  onTap: _showImageSourceDialog,
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundColor: primaryBlue.withOpacity(0.2),
-                    backgroundImage: profileImage != null
-                        ? FileImage(profileImage!)
-                        : (imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null)
-                            as ImageProvider?,
-                    child: profileImage == null && imageUrl.isEmpty
-                        ? const Icon(Icons.person, size: 60, color: primaryBlue)
-                        : null,
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                _buildTextField("Name", nameController, Icons.person),
-
-                const SizedBox(height: 12),
-
-                _buildTextField("Phone", phoneController, Icons.phone),
-
-                const SizedBox(height: 12),
-
-                _buildReadOnly("Email", email),
-
-                const SizedBox(height: 12),
-
-                _buildReadOnly("Role", role),
-
-                const SizedBox(height: 20),
-
-                ElevatedButton(
-                  onPressed: isSaving ? null : () => _saveChanges(user.uid),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    foregroundColor: Colors.white, // 👈 text + icon color
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                  child: isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Save Changes"),
-                ),
-
-                const SizedBox(height: 10),
-
-                OutlinedButton(
-                  onPressed: _logout,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                  child: const Text("Logout"),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      bottomNavigationBar: adminBottomNav(context, _currentIndex),
     );
   }
 
-  /// Editable field
+  /// ---------------- UI HELPERS ----------------
   Widget _buildTextField(
       String label, TextEditingController controller, IconData icon) {
     return TextField(
@@ -280,7 +285,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Read-only field
   Widget _buildReadOnly(String label, String value) {
     return TextField(
       readOnly: true,
