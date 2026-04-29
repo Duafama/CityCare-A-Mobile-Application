@@ -9,8 +9,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'my_complaints_screen.dart';
 import 'profile.dart';
 import 'dashboard_screen.dart';
+
 // import 'package:city_care/services/geocoding_service.dart';
-import 'package:geocoding/geocoding.dart';  // Top par import ka
+import 'package:geocoding/geocoding.dart'; // Top par import ka
 
 class SubmitScreen extends StatefulWidget {
   const SubmitScreen({super.key});
@@ -46,7 +47,6 @@ class _SubmitScreenState extends State<SubmitScreen> {
         ),
       ),
       body: const SubmitContent(),
-      
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1,
         onTap: (index) {
@@ -90,7 +90,7 @@ class SubmitContent extends StatefulWidget {
 
 class _SubmitContentState extends State<SubmitContent> {
   final User? _currentUser = FirebaseAuth.instance.currentUser;
-  
+
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
 
@@ -120,12 +120,12 @@ class _SubmitContentState extends State<SubmitContent> {
   // 🔥 Check location permission
   Future<void> _checkLocationPermission() async {
     setState(() => _isLoadingLocation = true);
-    
+
     var status = await Permission.location.status;
     if (status.isDenied) {
       status = await Permission.location.request();
     }
-    
+
     if (status.isGranted) {
       _getCurrentLocation();
     } else {
@@ -135,94 +135,96 @@ class _SubmitContentState extends State<SubmitContent> {
 
   // 🔥 Get current location
   Future<void> _getCurrentLocation() async {
-  try {
-    setState(() => _isLoadingLocation = true);
-    
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-    
-    final latLng = LatLng(position.latitude, position.longitude);
-    
-    setState(() {
-      _selectedLocation = latLng;
-      _updateMarker();
-      _locationController.text = 'Getting address...';  // Loading message
-    });
-    
-    // 🔥 Get address from coordinates (FREE)
-    final address = await _getAddressFromLatLng(latLng);
-    
-    setState(() {
-      _locationController.text = address;
-      _isLoadingLocation = false;
-    });
-    
-    if (_mapController != null) {
-      _mapController!.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: _selectedLocation!,
-            zoom: 15.0,
-          ),
-        ),
+    try {
+      setState(() => _isLoadingLocation = true);
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
+
+      final latLng = LatLng(position.latitude, position.longitude);
+
+      setState(() {
+        _selectedLocation = latLng;
+        _updateMarker();
+        _locationController.text = 'Getting address...'; // Loading message
+      });
+
+      // 🔥 Get address from coordinates (FREE)
+      final address = await _getAddressFromLatLng(latLng);
+
+      setState(() {
+        _locationController.text = address;
+        _isLoadingLocation = false;
+      });
+
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: _selectedLocation!,
+              zoom: 15.0,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+      setState(() => _isLoadingLocation = false);
+      _showSnackBar('Error getting location', context);
     }
-  } catch (e) {
-    print('Error getting location: $e');
-    setState(() => _isLoadingLocation = false);
-    _showSnackBar('Error getting location', context);
   }
-}
-Future<String> _getAddressFromLatLng(LatLng latLng) async {
-  try {
-    // Convert coordinates to placemark
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-      latLng.latitude, 
-      latLng.longitude,
-    );
-    
-    if (placemarks.isNotEmpty) {
-      Placemark place = placemarks[0];
-      
-      // Priority order for Pakistan addresses
-      String address = '';
-      
-      // Try to get area name first
-      if (place.subLocality != null && place.subLocality!.isNotEmpty) {
-        address = place.subLocality!;  // e.g., "Model Town"
+
+  Future<String> _getAddressFromLatLng(LatLng latLng) async {
+    try {
+      // Convert coordinates to placemark
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        latLng.latitude,
+        latLng.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+
+        // Priority order for Pakistan addresses
+        String address = '';
+
+        // Try to get area name first
+        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+          address = place.subLocality!; // e.g., "Model Town"
+        }
+        // Then try locality
+        else if (place.locality != null && place.locality!.isNotEmpty) {
+          address = place.locality!; // e.g., "Lahore"
+        }
+        // Then try sub-administrative area
+        else if (place.subAdministrativeArea != null &&
+            place.subAdministrativeArea!.isNotEmpty) {
+          address = place.subAdministrativeArea!;
+        }
+        // Finally use street or name
+        else if (place.name != null && place.name!.isNotEmpty) {
+          address = place.name!;
+        } else {
+          address = '${place.street}, ${place.locality}';
+        }
+
+        // Agar address empty hai to coordinates show karein
+        if (address.isEmpty) {
+          address =
+              'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
+        }
+
+        return address;
       }
-      // Then try locality
-      else if (place.locality != null && place.locality!.isNotEmpty) {
-        address = place.locality!;  // e.g., "Lahore"
-      }
-      // Then try sub-administrative area
-      else if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
-        address = place.subAdministrativeArea!;
-      }
-      // Finally use street or name
-      else if (place.name != null && place.name!.isNotEmpty) {
-        address = place.name!;
-      }
-      else {
-        address = '${place.street}, ${place.locality}';
-      }
-      
-      // Agar address empty hai to coordinates show karein
-      if (address.isEmpty) {
-        address = 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
-      }
-      
-      return address;
+
+      return 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
+    } catch (e) {
+      print('Geocoding error: $e');
+      return 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
     }
-    
-    return 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
-    
-  } catch (e) {
-    print('Geocoding error: $e');
-    return 'Lat: ${latLng.latitude.toStringAsFixed(4)}, Lng: ${latLng.longitude.toStringAsFixed(4)}';
   }
-}
+
 //
   // 🔥 Update marker on map
   void _updateMarker() {
@@ -239,72 +241,74 @@ Future<String> _getAddressFromLatLng(LatLng latLng) async {
   }
 
 // 🔥 Load categories from Firestore (Fixed)
-Future<void> _loadCategories() async {
-  try {
-    setState(() {
-      _isLoadingCategories = true;
-    });
-    
-    // Query sirf active status wali categories ke liye
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('categories')
-        .where('status', isEqualTo: 'active')
-        .get();
-    
-    print('🔍 Total active categories found: ${snapshot.docs.length}'); // Debug
-    
-    if (snapshot.docs.isEmpty) {
-      print('⚠️ No active categories found with where clause');
-      print('💡 Trying alternative query...');
-      
-      // Alternative: Get all and filter manually
-      QuerySnapshot allDocs = await FirebaseFirestore.instance
+  Future<void> _loadCategories() async {
+    try {
+      setState(() {
+        _isLoadingCategories = true;
+      });
+
+      // Query sirf active status wali categories ke liye
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('categories')
+          .where('status', isEqualTo: 'active')
           .get();
-      
-      print('📊 Total categories in DB: ${allDocs.docs.length}');
-      
-      List<Map<String, dynamic>> activeCategories = [];
-      for (var doc in allDocs.docs) {
-        print('Document: ${doc.id}, Name: ${doc['name']}, Status: ${doc['status']}');
-        String status = doc['status'] ?? '';
-        if (status.toLowerCase() == 'active') {
-          activeCategories.add({
+
+      print(
+          '🔍 Total active categories found: ${snapshot.docs.length}'); // Debug
+
+      if (snapshot.docs.isEmpty) {
+        print('⚠️ No active categories found with where clause');
+        print('💡 Trying alternative query...');
+
+        // Alternative: Get all and filter manually
+        QuerySnapshot allDocs =
+            await FirebaseFirestore.instance.collection('categories').get();
+
+        print('📊 Total categories in DB: ${allDocs.docs.length}');
+
+        List<Map<String, dynamic>> activeCategories = [];
+        for (var doc in allDocs.docs) {
+          print(
+              'Document: ${doc.id}, Name: ${doc['name']}, Status: ${doc['status']}');
+          String status = doc['status'] ?? '';
+          if (status.toLowerCase() == 'active') {
+            activeCategories.add({
+              'id': doc.id,
+              'name': doc['name'],
+            });
+          }
+        }
+
+        print(
+            '✅ Manually filtered active categories: ${activeCategories.length}');
+
+        setState(() {
+          _categories = activeCategories;
+          _isLoadingCategories = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _categories = snapshot.docs.map((doc) {
+          print('✅ Loading category: ${doc['name']}'); // Debug each category
+          return {
             'id': doc.id,
             'name': doc['name'],
-          });
-        }
-      }
-      
-      print('✅ Manually filtered active categories: ${activeCategories.length}');
-      
-      setState(() {
-        _categories = activeCategories;
+          };
+        }).toList();
         _isLoadingCategories = false;
       });
-      return;
+
+      print('🎯 Final categories count: ${_categories.length}');
+    } catch (e) {
+      print('❌ Error loading categories: $e');
+      setState(() {
+        _isLoadingCategories = false;
+      });
     }
-    
-    setState(() {
-      _categories = snapshot.docs.map((doc) {
-        print('✅ Loading category: ${doc['name']}'); // Debug each category
-        return {
-          'id': doc.id,
-          'name': doc['name'],
-        };
-      }).toList();
-      _isLoadingCategories = false;
-    });
-    
-    print('🎯 Final categories count: ${_categories.length}');
-    
-  } catch (e) {
-    print('❌ Error loading categories: $e');
-    setState(() {
-      _isLoadingCategories = false;
-    });
   }
-}
+
   @override
   void dispose() {
     _mapController?.dispose();
@@ -326,157 +330,166 @@ Future<void> _loadCategories() async {
                 //Modern dropdown
                 _buildSectionTitle('Category:'),
                 const SizedBox(height: 8),
-               Container(
-  decoration: BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(16),
-    border: Border.all(color: Colors.grey[200]!, width: 1.5),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.grey.withOpacity(0.05),
-        blurRadius: 8,
-        offset: const Offset(0, 2),
-      ),
-    ],
-  ),
-  child: _isLoadingCategories
-      ? const Padding(
-          padding: EdgeInsets.all(16),
-          child: Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFF4A6FFF),
-            ),
-          ),
-        )
-      : DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _selectedCategory,
-            isExpanded: true,
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF4A6FFF).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const Icon(
-                Icons.arrow_drop_down, 
-                color: Color(0xFF4A6FFF),
-                size: 24,
-              ),
-            ),
-            iconSize: 32,
-            dropdownColor: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            elevation: 4,
-            style: GoogleFonts.poppins(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF0F1A3D),
-            ),
-            items: [
-              DropdownMenuItem<String>(
-                value: 'Select a Category',
-                enabled: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(Icons.category_outlined, color: Colors.grey[400], size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Select a Category',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          color: Colors.grey[500],
-                          fontWeight: FontWeight.w500,
-                        ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                ),
-              ),
-              ..._categories.map((category) {
-                return DropdownMenuItem<String>(
-                  value: category['name'],
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4A6FFF),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            category['name'],
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              color: const Color(0xFF0F1A3D),
-                              fontWeight: FontWeight.w500,
+                  child: _isLoadingCategories
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF4A6FFF),
                             ),
                           ),
-                        ),
-                        if (category['name'] == _selectedCategory)
-                          const Icon(Icons.check_circle, color: Color(0xFF4A6FFF), size: 18),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-              DropdownMenuItem<String>(
-                value: 'Other',
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4A6FFF),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Other',
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            color: const Color(0xFF4A6FFF),
-                            fontWeight: FontWeight.w600,
+                        )
+                      : DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedCategory,
+                            isExpanded: true,
+                            icon: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4A6FFF).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_drop_down,
+                                color: Color(0xFF4A6FFF),
+                                size: 24,
+                              ),
+                            ),
+                            iconSize: 32,
+                            dropdownColor: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            elevation: 4,
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF0F1A3D),
+                            ),
+                            items: [
+                              DropdownMenuItem<String>(
+                                value: 'Select a Category',
+                                enabled: false,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.category_outlined,
+                                          color: Colors.grey[400], size: 20),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Select a Category',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 15,
+                                          color: Colors.grey[500],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              ..._categories.map((category) {
+                                return DropdownMenuItem<String>(
+                                  value: category['name'],
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF4A6FFF),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            category['name'],
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 15,
+                                              color: const Color(0xFF0F1A3D),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        if (category['name'] ==
+                                            _selectedCategory)
+                                          const Icon(Icons.check_circle,
+                                              color: Color(0xFF4A6FFF),
+                                              size: 18),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                              DropdownMenuItem<String>(
+                                value: 'Other',
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF4A6FFF),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Other',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 15,
+                                            color: const Color(0xFF4A6FFF),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      if (_selectedCategory == 'Other')
+                                        const Icon(Icons.check_circle,
+                                            color: Color(0xFF4A6FFF), size: 18),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedCategory = newValue!;
+                                if (newValue != 'Select a Category' &&
+                                    newValue != 'Other') {
+                                  final selectedCat = _categories.firstWhere(
+                                    (cat) => cat['name'] == newValue,
+                                    orElse: () => {},
+                                  );
+                                  _selectedCategoryId = selectedCat['id'];
+                                } else {
+                                  _selectedCategoryId = null;
+                                }
+                              });
+                            },
                           ),
                         ),
-                      ),
-                      if (_selectedCategory == 'Other')
-                        const Icon(Icons.check_circle, color: Color(0xFF4A6FFF), size: 18),
-                    ],
-                  ),
                 ),
-              ),
-            ],
-            onChanged: (String? newValue) {
-              setState(() {
-                _selectedCategory = newValue!;
-                if (newValue != 'Select a Category' && newValue != 'Other') {
-                  final selectedCat = _categories.firstWhere(
-                    (cat) => cat['name'] == newValue,
-                    orElse: () => {},
-                  );
-                  _selectedCategoryId = selectedCat['id'];
-                } else {
-                  _selectedCategoryId = null;
-                }
-              });
-            },
-          ),
-        ),
-),
                 const SizedBox(height: 20),
 
                 _buildSectionTitle('Description:'),
@@ -546,7 +559,8 @@ Future<void> _loadCategories() async {
                             Icons.my_location,
                             color: Color(0xFF4A6FFF),
                           ),
-                          onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                          onPressed:
+                              _isLoadingLocation ? null : _getCurrentLocation,
                         ),
                       ),
                     ],
@@ -556,7 +570,7 @@ Future<void> _loadCategories() async {
 
                 // 🔥 REAL GOOGLE MAP - REPLACES STATIC MAP
                 _buildMapSection(),
-                
+
                 const SizedBox(height: 20),
 
                 _buildSectionTitle('Attach Images:'),
@@ -652,22 +666,23 @@ Future<void> _loadCategories() async {
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
               mapType: MapType.normal,
-              onTap: (LatLng latLng) async {  // 👈 "async" add kiya
-  setState(() {
-    _selectedLocation = latLng;
-    _locationController.text = 'Getting address...';  // Loading message
-    _updateMarker();
-  });
-  
-  // Address fetch karein
-  final address = await _getAddressFromLatLng(latLng);
-  
-  setState(() {
-    _locationController.text = address;
-  });
-},
+              onTap: (LatLng latLng) async {
+                // 👈 "async" add kiya
+                setState(() {
+                  _selectedLocation = latLng;
+                  _locationController.text =
+                      'Getting address...'; // Loading message
+                  _updateMarker();
+                });
+
+                // Address fetch karein
+                final address = await _getAddressFromLatLng(latLng);
+
+                setState(() {
+                  _locationController.text = address;
+                });
+              },
             ),
-            
             if (_isLoadingLocation)
               Container(
                 color: Colors.black.withOpacity(0.3),
@@ -675,12 +690,12 @@ Future<void> _loadCategories() async {
                   child: CircularProgressIndicator(),
                 ),
               ),
-            
             Positioned(
               top: 10,
               left: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -694,7 +709,8 @@ Future<void> _loadCategories() async {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.touch_app, color: Color(0xFF4A6FFF), size: 16),
+                    const Icon(Icons.touch_app,
+                        color: Color(0xFF4A6FFF), size: 16),
                     const SizedBox(width: 4),
                     Text(
                       'Tap on map to select location',
@@ -764,7 +780,6 @@ Future<void> _loadCategories() async {
                   ),
           ),
         ),
-
         if (_selectedImageUrls.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
@@ -835,7 +850,7 @@ Future<void> _loadCategories() async {
 
     try {
       final imageUrl = await CloudinaryService.pickAndUploadImage();
-      
+
       if (imageUrl != null && mounted) {
         setState(() {
           _selectedImageUrls.add(imageUrl);
@@ -882,11 +897,10 @@ Future<void> _loadCategories() async {
 
     setState(() => _isSubmitting = true);
 
+    
     try {
-      String complaintId = FirebaseFirestore.instance
-          .collection('complaints')
-          .doc()
-          .id;
+      String complaintId =
+          FirebaseFirestore.instance.collection('complaints').doc().id;
 
       String suggestedPriority = 'Medium';
 
@@ -907,7 +921,8 @@ Future<void> _loadCategories() async {
         'citizenId': _currentUser!.uid,
         'citizenEmail': _currentUser!.email,
         'categoryId': _selectedCategoryId ?? '',
-        'categoryName': _selectedCategory == 'Other' ? 'Other' : _selectedCategory,
+        'categoryName':
+            _selectedCategory == 'Other' ? 'Other' : _selectedCategory,
         'departmentId': '',
         'upvoteCount': 0,
         'commentCount': 0,
@@ -929,7 +944,6 @@ Future<void> _loadCategories() async {
           });
         }
       });
-
     } catch (e) {
       print('Error submitting complaint: $e');
       _showSnackBar('Error submitting complaint: ${e.toString()}', context);
