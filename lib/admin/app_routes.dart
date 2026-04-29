@@ -91,11 +91,5 @@ class AppRoutes {
     manageUsers: (_) => const ManageUsersScreen(),
 
     flaggedComments: (_) => const FlaggedCommentsScreen(),
-    commentDetail: (_) => const CommentDetailScreen(
-          comment: "Sample Comment",
-          user: "Jane Doe",
-          post: "Example Post",
-          createdAt: "2026-01-25 10:00",
-        ),
   };
 }
