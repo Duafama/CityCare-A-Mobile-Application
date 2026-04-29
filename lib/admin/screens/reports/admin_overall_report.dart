@@ -4,6 +4,7 @@ import '../../../models/department.dart';
 import 'admin_report_service.dart';
 import 'report_widgets.dart';
 import 'department_report_screen.dart';
+import '../../../services/complaint_service.dart';
 
 class AdminOverallReportScreen extends StatefulWidget {
   const AdminOverallReportScreen({super.key});
@@ -13,8 +14,7 @@ class AdminOverallReportScreen extends StatefulWidget {
       _AdminOverallReportScreenState();
 }
 
-class _AdminOverallReportScreenState
-    extends State<AdminOverallReportScreen> {
+class _AdminOverallReportScreenState extends State<AdminOverallReportScreen> {
   String selectedPeriod = "All Time";
 
   List<Complaint> allComplaints = [];
@@ -30,7 +30,7 @@ class _AdminOverallReportScreenState
   Future<void> _loadData() async {
     try {
       final service = AdminReportService();
-      final complaints = await service.getAllComplaints();
+      final complaints = await ComplaintService().getComplaints();
       final depts = await service.getAllDepartments();
 
       setState(() {
@@ -57,19 +57,16 @@ class _AdminOverallReportScreenState
 
     return Scaffold(
       backgroundColor: kLightGrey,
-
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Overall Report",
-          style:
-              TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: kPrimaryBlue,
         elevation: 0,
       ),
-
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -90,7 +87,7 @@ class _AdminOverallReportScreenState
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          childAspectRatio: 1.7,
+                          childAspectRatio: 1.2,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
                             ReportStatCard(
@@ -101,22 +98,19 @@ class _AdminOverallReportScreenState
                             ),
                             ReportStatCard(
                               label: "Resolution Rate",
-                              value:
-                                  "${resRate.toStringAsFixed(0)}%",
+                              value: "${resRate.toStringAsFixed(0)}%",
                               icon: Icons.trending_up,
                               color: const Color(0xFF00897B),
                             ),
                             ReportStatCard(
                               label: "Resolved",
-                              value: statusCounts["Resolved"]
-                                  .toString(),
+                              value: statusCounts["Resolved"].toString(),
                               icon: Icons.check_circle_outline,
                               color: const Color(0xFF43A047),
                             ),
                             ReportStatCard(
                               label: "Pending",
-                              value: statusCounts["Pending"]
-                                  .toString(),
+                              value: statusCounts["Pending"].toString(),
                               icon: Icons.hourglass_empty,
                               color: const Color(0xFFFFA726),
                             ),
@@ -145,19 +139,16 @@ class _AdminOverallReportScreenState
                         // ── DEPARTMENT BREAKDOWN ─────────────────────
                         const SectionHeader(
                           title: "Department Breakdown",
-                          subtitle:
-                              "Tap a department to view its full report",
+                          subtitle: "Tap a department to view its full report",
                         ),
 
                         ...departments.map((dept) {
                           final deptComplaints = filtered
-                              .where(
-                                  (c) => c.departmentId == dept.id)
+                              .where((c) => c.departmentId == dept.id)
                               .toList();
                           final deptTotal = deptComplaints.length;
                           final deptResolved = deptComplaints
-                              .where(
-                                  (c) => c.status == "Resolved")
+                              .where((c) => c.status == "Resolved")
                               .length;
                           final deptRate = deptTotal > 0
                               ? ((deptResolved / deptTotal) * 100)
@@ -173,8 +164,7 @@ class _AdminOverallReportScreenState
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      DepartmentReportScreen(
+                                  builder: (_) => DepartmentReportScreen(
                                     departmentId: dept.id,
                                     departmentName: dept.name,
                                   ),
@@ -266,8 +256,8 @@ class _DepartmentBreakdownTile extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: kPrimaryBlue,
                     borderRadius: BorderRadius.circular(20),
@@ -282,8 +272,7 @@ class _DepartmentBreakdownTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right,
-                    color: Colors.grey, size: 18),
+                const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
               ],
             ),
             const SizedBox(height: 10),

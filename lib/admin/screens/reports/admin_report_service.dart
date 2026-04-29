@@ -6,12 +6,12 @@ class AdminReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // ── All complaints ──────────────────────────────────────────
-  Future<List<Complaint>> getAllComplaints() async {
-    final snapshot = await _firestore.collection('complaints').get();
-    return snapshot.docs
-        .map((doc) => Complaint.fromMap(doc.id, doc.data()))
-        .toList();
-  }
+  // Future<List<Complaint>> getAllComplaints() async {
+  //   final snapshot = await _firestore.collection('complaints').get();
+  //   return snapshot.docs
+  //       .map((doc) => Complaint.fromMap(doc.id, doc.data()))
+  //       .toList();
+  // }
 
   // ── All departments ─────────────────────────────────────────
   Future<List<Department>> getAllDepartments() async {

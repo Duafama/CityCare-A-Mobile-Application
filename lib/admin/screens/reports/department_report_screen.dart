@@ -134,7 +134,7 @@ class _OverviewTab extends StatelessWidget {
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1.7,
+            childAspectRatio: 1.2,
             physics: const NeverScrollableScrollPhysics(),
             children: [
               ReportStatCard(

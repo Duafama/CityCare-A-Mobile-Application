@@ -5,6 +5,8 @@ import 'admin_report_service.dart';
 import 'report_widgets.dart';
 import 'admin_overall_report.dart';
 import 'department_report_screen.dart';
+import '../../../services/complaint_service.dart';
+
 
 class ReportsMenuScreen extends StatefulWidget {
   const ReportsMenuScreen({super.key});
@@ -30,7 +32,7 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
     try {
       final service = AdminReportService();
       final depts = await service.getAllDepartments();
-      final allComplaints = await service.getAllComplaints();
+      final allComplaints = await ComplaintService().getComplaints();
 
       // Count complaints per department
       final Map<String, int> counts = {};
