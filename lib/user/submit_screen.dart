@@ -912,7 +912,16 @@ Future<void> _loadCategories() async {
         'upvoteCount': 0,
         'commentCount': 0,
       });
-
+       await FirebaseFirestore.instance
+    .collection('complaints')
+    .doc(complaintId)
+    .collection('timeline')
+    .add({
+    'status': 'Pending',
+    'timestamp': FieldValue.serverTimestamp(),
+   'comment': 'Complaint submitted',
+   'updatedBy': _currentUser!.uid,
+});
       _showSnackBar('✅ Complaint submitted successfully!', context);
 
       Future.delayed(const Duration(seconds: 2), () {
