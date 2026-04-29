@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../services/notification_service.dart';
 import '../models/complaint.dart';
 import '../models/TimelineEvent.dart';
 
@@ -437,93 +437,136 @@ class _DepartmentComplaintDetailState
     );
   }
 
-  Widget _buildActionButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: isActionLoading
-            ? null
-            : () async {
-                setState(() => isActionLoading = true);
-                try {
-                  await DepartmentComplaintService()
-                      .markInProgress(complaint!.complaintId, complaint!.citizenId);
-                  setState(() {
-                    complaint!.status = "InProgress";
-                    isActionLoading = false;
-                  });
-                  await _refreshTimeline();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Status updated to In Progress"),
-                      backgroundColor: Colors.blue,
-                    ),
-                  );
-                } catch (e) {
-                  setState(() => isActionLoading = false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Error: $e"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        icon: isActionLoading
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.autorenew),
-        label: const Text(
-          "Mark In Progress",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUploadButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          Navigator.pushNamed(
-            context,
-            DepartmentRoutes.uploadProof,
-            arguments: complaint,
-          ).then((_) {
-            // Refresh after returning from upload screen
-            _loadComplaint();
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        icon: const Icon(Icons.upload_file),
-        label: const Text(
-          "Upload Resolution Proof",
-          style: TextStyle(fontWeight: FontWeight.bold),
+ Widget _buildActionButton() {
+  return SizedBox(
+    width: double.infinity,
+    child: ElevatedButton.icon(
+      onPressed: isActionLoading
+          ? null
+          : () async {
+              setState(() => isActionLoading = true);
+              try {
+                // 🔥 GET OLD STATUS AND CITIZEN INFO (JAISA ADMIN MEIN)
+                String oldStatus = complaint!.status;
+                String citizenId = complaint!.citizenId;
+                String complaintTitle = complaint!.categoryName;
+                
+                await DepartmentComplaintService()
+                    .markInProgress(complaint!.complaintId, complaint!.citizenId);
+                
+                // 🔥 SEND NOTIFICATION TO CITIZEN (JAISA ADMIN MEIN)
+                await NotificationService.notifyStatusChange(
+                  userId: citizenId,
+                  complaintId: complaint!.complaintId,
+                  complaintTitle: complaintTitle,
+                  oldStatus: oldStatus,
+                  newStatus: 'In-Progress',
+                );
+                
+                setState(() {
+                  complaint!.status = "InProgress";
+                  isActionLoading = false;
+                });
+                await _refreshTimeline();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Status updated to In Progress & citizen notified"),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              } catch (e) {
+                setState(() => isActionLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Error: $e"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
-    );
-  }
+      icon: isActionLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white),
+            )
+          : const Icon(Icons.autorenew),
+      label: const Text(
+        "Mark In Progress",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+    ),
+  );
+}
 
+ Widget _buildUploadButton() {
+  return SizedBox(
+    width: double.infinity,
+    child: ElevatedButton.icon(
+      onPressed: () async {
+        // 🔥 GET CITIZEN INFO (JAISA ADMIN MEIN)
+        String oldStatus = complaint!.status;
+        String citizenId = complaint!.citizenId;
+        String complaintTitle = complaint!.categoryName;
+        String complaintId = complaint!.complaintId;
+        
+        final result = await Navigator.pushNamed(
+          context,
+          DepartmentRoutes.uploadProof,
+          arguments: complaint,
+        );
+        
+        if (result == true) {
+          // Update status to Resolved
+          await DepartmentComplaintService()
+              .updateComplaintStatus(complaintId, 'Resolved');
+          
+          // 🔥 SEND NOTIFICATION TO CITIZEN (JAISA ADMIN MEIN)
+          await NotificationService.notifyStatusChange(
+            userId: citizenId,
+            complaintId: complaintId,
+            complaintTitle: complaintTitle,
+            oldStatus: oldStatus,
+            newStatus: 'Resolved',
+          );
+          
+          _loadComplaint();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Complaint resolved & citizen notified'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          _loadComplaint();
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      icon: const Icon(Icons.upload_file),
+      label: const Text(
+        "Upload Resolution Proof",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+    ),
+  );
+}
   Widget _resolvedBanner() {
     return Container(
       padding: const EdgeInsets.all(14),
