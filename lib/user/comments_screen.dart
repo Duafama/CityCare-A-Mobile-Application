@@ -282,6 +282,30 @@ class _CommentsScreenState extends State<CommentsScreen> {
               color: const Color(0xFF0F1A3D),
               child: Row(
                 children: [
+                          // 🔹 Current user avatar (same as above)
+        StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(_currentUser.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            String? photoUrl = snapshot.data?.get('profileImageUrl') as String?;
+            return CircleAvatar(
+              radius: 16,  // slightly smaller for reply box
+              backgroundColor: const Color(0xFF4A6FFF),
+              backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                  ? NetworkImage(photoUrl)
+                  : null,
+              child: (photoUrl == null || photoUrl.isEmpty)
+                  ? Text(
+                      (_currentUser.displayName ?? 'U')[0].toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    )
+                  : null,
+            );
+          },
+        ),
+        const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
                       controller: _replyController,
@@ -321,6 +345,30 @@ class _CommentsScreenState extends State<CommentsScreen> {
               ),
               child: Row(
                 children: [
+                  // 🔹 Current user avatar
+        StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(_currentUser.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            String? photoUrl = snapshot.data?.get('profileImageUrl') as String?;
+            return CircleAvatar(
+              radius: 18,
+              backgroundColor: const Color(0xFF4A6FFF),
+              backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                  ? NetworkImage(photoUrl)
+                  : null,
+              child: (photoUrl == null || photoUrl.isEmpty)
+                  ? Text(
+                      (_currentUser.displayName ?? 'U')[0].toUpperCase(),
+                      style: const TextStyle(color: Colors.white),
+                    )
+                  : null,
+            );
+          },
+        ),
+        const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
                       controller: _commentController,
