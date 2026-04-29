@@ -16,12 +16,14 @@ import 'user/login_screen.dart';
 import 'user/register_screen.dart';
 import 'user/dashboard_screen.dart';
 import 'user/forgot_password_screen.dart';
+import '../services/AIService.dart'; // only for isCommentSafe (profanity check)
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await PaymentService.initialize();
-
+  await AIService.initialize();  // 👈 Add this line
   runApp(
     MultiProvider(
       providers: [

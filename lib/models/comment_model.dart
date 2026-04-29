@@ -9,7 +9,7 @@ class Comment {
   final DateTime createdAt;
   final bool isFlagged;
   final String? photoUrl;
-  final String? rootParentId;
+  
   final int likes;
   final String?
       parentId; // null = main comment, not null = reply to main comment
@@ -23,7 +23,7 @@ class Comment {
     required this.createdAt,
     this.isFlagged = false,
     this.photoUrl,
-    this.rootParentId,
+    
     this.likes = 0,
     this.parentId,
   });
@@ -38,7 +38,7 @@ class Comment {
       'isFlagged': isFlagged,
       'photoUrl': photoUrl,
       'likes': likes,
-      // ❌ 'parentId': parentId,  // Yeh hata do
+     
     };
 
     // ✅ Sirf tab add karo jab reply ho

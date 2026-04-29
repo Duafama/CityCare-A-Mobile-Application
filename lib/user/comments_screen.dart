@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../services/moderation_service.dart';
+import '../services/AIService.dart'; // only for isCommentSafe (profanity check)
 import '../models/comment_model.dart';
+
 
 class CommentsScreen extends StatefulWidget {
   final Map<String, dynamic> complaint;
@@ -17,7 +18,7 @@ class CommentsScreen extends StatefulWidget {
 class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _replyController = TextEditingController();
-  final ModerationService _moderation = ModerationService();
+  final AIService _AIService = AIService(); // 👈 Replace ModerationService
   late final User _currentUser;
   String? _replyingToId;
 
@@ -49,29 +50,17 @@ class _CommentsScreenState extends State<CommentsScreen> {
     }
   }
 
+  // Main comment submission
   Future<void> _submitMainComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
-    final bool isSafe = _moderation.isCommentSafe(text);
+     final bool isSafe = await _AIService.moderateComment(text); // 👈 Use AIService
     final complaintId = widget.complaint['complaintId'] ?? widget.complaint['id'];
-
-    if (!isSafe) {
-      await _moderation.flagCommentAndSave(
-        commentId: DateTime.now().millisecondsSinceEpoch.toString(),
-        commentText: text,
-        commenterId: _currentUser.uid,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Comment reported to admin.'), backgroundColor: Colors.orange),
-      );
-      _commentController.clear();
-      
-      return;
-    }
 
     final userPhoto = await _getUserPhoto(_currentUser.uid);
 
+    // Create comment object – always saved to 'comments' collection
     final comment = Comment(
       id: FirebaseFirestore.instance.collection('comments').doc().id,
       complaintId: complaintId,
@@ -79,48 +68,41 @@ class _CommentsScreenState extends State<CommentsScreen> {
       userName: _currentUser.displayName ?? _currentUser.email?.split('@').first ?? 'User',
       text: text,
       createdAt: DateTime.now(),
-      isFlagged: false,
+      isFlagged: !isSafe,   // true = flagged (needs admin review), false = safe
       photoUrl: userPhoto ?? _currentUser.photoURL,
       parentId: null,
       likes: 0,
     );
 
+    // Always save to 'comments' collection
     await FirebaseFirestore.instance.collection('comments').doc(comment.id).set(comment.toJson());
+
+    if (!isSafe) {
+      // Flagged comment – show message, do NOT increment commentCount (optional)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ Comment reported to admin for review.'), backgroundColor: Colors.orange),
+      );
+    } else {
+      // Safe comment – increment comment count
+      await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(complaintId)
+          .update({'commentCount': FieldValue.increment(1)});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Comment posted!'), backgroundColor: Colors.green),
+      );
+    }
+
     _commentController.clear();
-    // 🔥 ADD THIS BLOCK
-  await FirebaseFirestore.instance
-      .collection('complaints')
-      .doc(complaintId)
-      .update({
-    'commentCount': FieldValue.increment(1),
-  });
-
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Comment posted!'), backgroundColor: Colors.green),
-    );
   }
 
+  // Reply submission
   Future<void> _submitReply() async {
     final text = _replyController.text.trim();
     if (text.isEmpty || _replyingToId == null) return;
 
-    final bool isSafe = _moderation.isCommentSafe(text);
+    final bool isSafe = await _AIService.moderateComment(text); // 👈 Use AIService
     final complaintId = widget.complaint['complaintId'] ?? widget.complaint['id'];
-
-    if (!isSafe) {
-      await _moderation.flagCommentAndSave(
-        commentId: DateTime.now().millisecondsSinceEpoch.toString(),
-        commentText: text,
-        commenterId: _currentUser.uid,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Reply reported to admin.'), backgroundColor: Colors.orange),
-      );
-      _replyController.clear();
-      setState(() => _replyingToId = null);
-      return;
-    }
 
     final userPhoto = await _getUserPhoto(_currentUser.uid);
 
@@ -131,25 +113,30 @@ class _CommentsScreenState extends State<CommentsScreen> {
       userName: _currentUser.displayName ?? _currentUser.email?.split('@').first ?? 'User',
       text: text,
       createdAt: DateTime.now(),
-      isFlagged: false,
+      isFlagged: !isSafe,
       photoUrl: userPhoto ?? _currentUser.photoURL,
       parentId: _replyingToId,
       likes: 0,
     );
 
     await FirebaseFirestore.instance.collection('comments').doc(reply.id).set(reply.toJson());
+
+    if (!isSafe) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ Reply reported to admin for review.'), backgroundColor: Colors.orange),
+      );
+    } else {
+      await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(complaintId)
+          .update({'commentCount': FieldValue.increment(1)});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Reply posted!'), backgroundColor: Colors.green),
+      );
+    }
+
     _replyController.clear();
     setState(() => _replyingToId = null);
-// Reply save hone ke baad
-await FirebaseFirestore.instance
-    .collection('complaints')
-    .doc(complaintId)
-    .update({
-  'commentCount': FieldValue.increment(1),
-});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Reply posted!'), backgroundColor: Colors.green),
-    );
   }
 
   Future<void> _toggleLike(String commentId, int currentLikes) async {
@@ -182,12 +169,13 @@ await FirebaseFirestore.instance
       ),
       body: Column(
         children: [
-          // Comments List
+          // Comments List – fetch only safe comments (isFlagged == false)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('comments')
                   .where('complaintId', isEqualTo: complaintId)
+                  .where('isFlagged', isEqualTo: false)   // 👈 filter out flagged comments
                   .orderBy('createdAt', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
@@ -237,8 +225,11 @@ await FirebaseFirestore.instance
           // Main Input
           if (_replyingToId == null)
             Container(
-              padding: const EdgeInsets.all(12),
-              color: const Color(0xFF0F1A3D),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F1A3D),
+                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -339,7 +330,7 @@ await FirebaseFirestore.instance
             );
           },
         ),
-        // Replies
+        // Replies – already filtered to only safe comments (because parent query already filters isFlagged false)
         ...replies.map((reply) => _buildReplyTile(reply)).toList(),
       ],
     );
