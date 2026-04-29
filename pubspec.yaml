@@ -38,7 +38,7 @@ dependencies:
   flutter_stripe: ^12.0.2    # Stripe SDK
   
   
-  
+  google_generative_ai: ^0.4.6  # Google Gemini AI
   # Optional but recommended
   flutter_dotenv: ^5.1.0  
   provider: ^6.0.5

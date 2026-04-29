@@ -9,9 +9,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'my_complaints_screen.dart';
 import 'profile.dart';
 import 'dashboard_screen.dart';
-
 // import 'package:city_care/services/geocoding_service.dart';
 import 'package:geocoding/geocoding.dart'; // Top par import ka
+
+import '../services/ai_priority_service.dart';
 
 class SubmitScreen extends StatefulWidget {
   const SubmitScreen({super.key});
@@ -104,7 +105,7 @@ class _SubmitContentState extends State<SubmitContent> {
   GoogleMapController? _mapController;
   LatLng? _selectedLocation;
   bool _isLoadingLocation = false;
-  Set<Marker> _markers = {};
+  final Set<Marker> _markers = {};
 
   // 🔥 Categories from Firestore
   List<Map<String, dynamic>> _categories = [];
@@ -580,6 +581,8 @@ class _SubmitContentState extends State<SubmitContent> {
 
                 // 🔍 AI Duplication Detection - TO BE IMPLEMENTED
                 // ⚡ AI Priority Suggestion - TO BE IMPLEMENTED
+// Add this button temporarily in your submit_screen.dart build method
+// Just for testing, add it above the submit button
 
                 Container(
                   width: double.infinity,
@@ -897,12 +900,15 @@ class _SubmitContentState extends State<SubmitContent> {
 
     setState(() => _isSubmitting = true);
 
-    
     try {
       String complaintId =
           FirebaseFirestore.instance.collection('complaints').doc().id;
-
-      String suggestedPriority = 'Medium';
+// 🔥 Show loading message while AI analyzes
+      String suggestedPriority = await AIService.getPriority(
+        description: _descriptionController.text.trim(),
+        category: _selectedCategory,
+        imageUrls: _selectedImageUrls,
+      );
 
       await FirebaseFirestore.instance
           .collection('complaints')
@@ -927,17 +933,9 @@ class _SubmitContentState extends State<SubmitContent> {
         'upvoteCount': 0,
         'commentCount': 0,
       });
-       await FirebaseFirestore.instance
-    .collection('complaints')
-    .doc(complaintId)
-    .collection('timeline')
-    .add({
-    'status': 'Pending',
-    'timestamp': FieldValue.serverTimestamp(),
-   'comment': 'Complaint submitted',
-   'updatedBy': _currentUser!.uid,
-});
-      _showSnackBar('✅ Complaint submitted successfully!', context);
+
+      _showSnackBar(
+          '✅ Complaint submitted! Priority: $suggestedPriority', context);
 
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {

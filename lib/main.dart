@@ -18,12 +18,17 @@ import 'user/dashboard_screen.dart';
 import 'user/forgot_password_screen.dart';
 import '../services/AIService.dart'; // only for isCommentSafe (profanity check)
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env"); // ✅ ADD THIS
+
   await Firebase.initializeApp();
   await PaymentService.initialize();
-  await AIService.initialize();  // 👈 Add this line
+  await AIService.initialize(); // 👈 Add this line
+
+  print("🔥 APP STARTED");
   runApp(
     MultiProvider(
       providers: [
