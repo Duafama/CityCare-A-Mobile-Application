@@ -19,6 +19,11 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final AIService _AIService = AIService();
   late final User _currentUser;
   String? _replyingToId;
+  String _replyingToName = ''; // store name for @mention
+
+  // Focus & scroll for reply
+  final FocusNode _replyFocusNode = FocusNode();
+  final ScrollController _replyScrollController = ScrollController();
 
   final Set<String> _likedComments = {};
   final Map<String, String> _photoCache = {};
@@ -33,6 +38,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
   void dispose() {
     _commentController.dispose();
     _replyController.dispose();
+    _replyFocusNode.dispose();
+    _replyScrollController.dispose();
     super.dispose();
   }
 
@@ -126,7 +133,10 @@ class _CommentsScreenState extends State<CommentsScreen> {
       );
     }
     _replyController.clear();
-    setState(() => _replyingToId = null);
+    setState(() {
+      _replyingToId = null;
+      _replyingToName = '';
+    });
   }
 
   Future<void> _toggleLike(String commentId, int currentLikes) async {
@@ -141,7 +151,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
     setState(() {});
   }
 
-  // ✅ NEW: Delete comment/reply with count decrement
+  // Delete comment/reply
   Future<void> _deleteComment(String commentId, String complaintId, bool isFlagged) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -162,7 +172,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
       final complaintRef = FirebaseFirestore.instance.collection('complaints').doc(complaintId);
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
-        // Only decrement count if comment was publicly visible
         if (!isFlagged) {
           transaction.update(complaintRef, {'commentCount': FieldValue.increment(-1)});
         }
@@ -175,6 +184,16 @@ class _CommentsScreenState extends State<CommentsScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_replyScrollController.hasClients) {
+      _replyScrollController.animateTo(
+        _replyScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
       );
     }
   }
@@ -217,6 +236,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 final allComments = snapshot.data!.docs.map((doc) => Comment.fromFirestore(doc)).toList();
                 final mainComments = allComments.where((c) => c.parentId == null).toList();
                 return ListView.builder(
+                  controller: _replyScrollController,
                   padding: const EdgeInsets.only(top: 8),
                   itemCount: mainComments.length,
                   itemBuilder: (context, index) => _buildCommentWithReplies(mainComments[index], allComments),
@@ -225,6 +245,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
             ),
           ),
 
+          // Reply Input
           if (_replyingToId != null)
             Container(
               padding: const EdgeInsets.all(12),
@@ -234,20 +255,33 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   Expanded(
                     child: TextField(
                       controller: _replyController,
+                      focusNode: _replyFocusNode,
+                      autofocus: true,
                       style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Write a reply...',
+                        hintText: _replyingToName.isEmpty
+                            ? 'Write a reply...'
+                            : 'Reply to @$_replyingToName...',
                         hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withOpacity(0.6)),
                         border: InputBorder.none,
                       ),
                     ),
                   ),
                   IconButton(onPressed: _submitReply, icon: const Icon(Icons.send, color: Color(0xFF4A6FFF))),
-                  IconButton(onPressed: () => setState(() => _replyingToId = null), icon: const Icon(Icons.close, color: Colors.red)),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _replyingToId = null;
+                        _replyingToName = '';
+                      });
+                    },
+                    icon: const Icon(Icons.close, color: Colors.red),
+                  ),
                 ],
               ),
             ),
 
+          // Main comment input
           if (_replyingToId == null)
             Container(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -336,7 +370,16 @@ class _CommentsScreenState extends State<CommentsScreen> {
                             ),
                             const SizedBox(width: 20),
                             GestureDetector(
-                              onTap: () => setState(() => _replyingToId = comment.id),
+                              onTap: () {
+                                setState(() {
+                                  _replyingToId = comment.id;
+                                  _replyingToName = comment.userName;
+                                });
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  _replyFocusNode.requestFocus();
+                                  _scrollToBottom();
+                                });
+                              },
                               child: const Row(
                                 children: [
                                   Icon(Icons.reply, size: 16, color: Colors.white70),
@@ -345,7 +388,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
                                 ],
                               ),
                             ),
-                            // ✅ NEW: Delete button for main comment (owner only)
                             if (isOwner) ...[
                               const SizedBox(width: 20),
                               GestureDetector(
@@ -428,9 +470,9 @@ class _CommentsScreenState extends State<CommentsScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 20),
-                        // ✅ NEW: Delete button for reply (owner only)
-                        if (isOwner)
+                        // ❌ NO REPLY BUTTON ON REPLIES (as requested)
+                        if (isOwner) ...[
+                          const SizedBox(width: 16),
                           GestureDetector(
                             onTap: () => _deleteComment(reply.id, reply.complaintId, reply.isFlagged),
                             child: const Row(
@@ -441,6 +483,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                               ],
                             ),
                           ),
+                        ],
                       ],
                     ),
                   ],
