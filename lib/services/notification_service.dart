@@ -30,7 +30,22 @@ class NotificationService {
       print('❌ Error sending notification: $e');
     }
   }
-
+ // lib/services/notification_service.dart mein ye function hona chahiye:
+static Future<void> notifyCommentFlagged({
+  required String userId,
+  required String complaintId,
+  required String commentText,
+}) async {
+  await sendNotification(
+    userId: userId,
+    complaintId: complaintId,
+    title: 'Comment Flagged ⚠️',
+    description: 'Your comment "$commentText" has been flagged for inappropriate content. Please review our community guidelines.',
+    type: 'flagged',
+    icon: Icons.flag,
+    color: Colors.red,
+  );
+}
   static Future<void> notifyStatusChange({
     required String userId,
     required String complaintId,

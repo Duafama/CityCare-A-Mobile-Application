@@ -8,7 +8,7 @@ import 'comments_screen.dart';
 import 'my_complaints_screen.dart';
 import 'profile.dart';
 import '../models/complaint_enums.dart';
-
+import 'dart:async'; 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -22,14 +22,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   // 🔥 UPVOTE TRACKING
   Set<String> _userUpvotedComplaints = {};
+  
+  // 🔥 NOTIFICATION STREAM SUBSCRIPTION
+  StreamSubscription<QuerySnapshot>? _notificationSubscription;
 
   final List<String> _filters = ['All', 'Approved', 'In-Progress', 'Resolved'];
 
   @override
   void initState() {
     super.initState();
-    _fetchNotificationCount();
+    _listenToNotificationCount();  // 🔥 REPLACED _fetchNotificationCount
     _loadUserUpvotedComplaints();
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();  // 🔥 CLEANUP
+    super.dispose();
+  }
+
+  // 🔥 REAL-TIME NOTIFICATION COUNT LISTENER
+  void _listenToNotificationCount() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    
+    _notificationSubscription = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: user.uid)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _notificationCount = snapshot.docs.length;
+        });
+      }
+    });
   }
 
   // 🔥 LOAD USER'S UPVOTED COMPLAINTS
@@ -52,7 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // 🔥 TOGGLE UPVOTE FUNCTION - FIXED (NO setState causing scroll reset)
+  // 🔥 TOGGLE UPVOTE FUNCTION
   Future<void> _toggleUpvote(String complaintId, int currentUpvotes) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -71,17 +99,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .doc(complaintId);
 
       if (_userUpvotedComplaints.contains(complaintId)) {
-        // 🔥 REMOVE UPVOTE
         await FirebaseFirestore.instance.runTransaction((transaction) async {
           transaction.update(complaintRef, {'upvoteCount': currentUpvotes - 1});
           transaction.delete(upvoteRef);
         });
-        
-        // Update local set only
         _userUpvotedComplaints.remove(complaintId);
-        
       } else {
-        // 🔥 ADD UPVOTE
         await FirebaseFirestore.instance.runTransaction((transaction) async {
           transaction.update(complaintRef, {'upvoteCount': currentUpvotes + 1});
           transaction.set(upvoteRef, {
@@ -90,12 +113,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             'timestamp': FieldValue.serverTimestamp(),
           });
         });
-        
-        // Update local set only
         _userUpvotedComplaints.add(complaintId);
       }
-      
-      // 🔥 NO setState here - StreamBuilder will handle UI update automatically
       
     } catch (e) {
       print('Error toggling upvote: $e');
@@ -104,26 +123,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SnackBar(content: Text('Error updating upvote'), backgroundColor: Colors.red),
         );
       }
-    }
-  }
-
-  Future<void> _fetchNotificationCount() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final snapshot = await FirebaseFirestore.instance
-            .collection('notifications')
-            .where('userId', isEqualTo: user.uid)
-            .where('isRead', isEqualTo: false)
-            .get();
-        if (mounted) {
-          setState(() {
-            _notificationCount = snapshot.docs.length;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error fetching notifications: $e');
     }
   }
 
@@ -426,13 +425,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String citizenId = complaint['citizenId'] ?? '';
     String timeAgo = _getTimeAgo(complaint['createdAt']);
     
-    // Before images (complaint images)
     List<String> beforeImages = [];
     if (complaint['beforeImages'] != null && complaint['beforeImages'] is List) {
       beforeImages = List<String>.from(complaint['beforeImages']);
     }
     
-    // After images (resolution images - for resolved complaints)
     List<String> afterImages = [];
     if (complaint['afterImages'] != null && complaint['afterImages'] is List) {
       afterImages = List<String>.from(complaint['afterImages']);
@@ -456,7 +453,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // 🔥 USER PROFILE IMAGE
                 FutureBuilder<String?>(
                   future: _getUserProfileImage(citizenId),
                   builder: (context, snapshot) {
@@ -480,7 +476,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               displayName = nameSnapshot.data!;
                               initial = displayName[0].toUpperCase();
                             } else {
-                              // Fallback to email if name not found
                               String userEmail = complaint['citizenEmail'] ?? 'Anonymous';
                               displayName = userEmail.split('@')[0];
                               initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
@@ -501,7 +496,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 🔥 USER NAME - Fetch from Firestore or use email fallback
                       FutureBuilder<String>(
                         future: _getUserName(citizenId),
                         builder: (context, nameSnapshot) {
@@ -532,10 +526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Expanded(
                             child: Text(
                               complaint['location'] ?? 'No location',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
+                              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -562,17 +553,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
           
-          // 🔥 BEFORE IMAGES
           if (beforeImages.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Before Images',
-                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[600]),
-                  ),
+                  child: Text('Before Images', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[600])),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -590,10 +577,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         margin: EdgeInsets.only(right: imgIndex < beforeImages.length - 1 ? 12 : 0),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          image: DecorationImage(
-                            image: NetworkImage(beforeImages[imgIndex]),
-                            fit: BoxFit.cover,
-                          ),
+                          image: DecorationImage(image: NetworkImage(beforeImages[imgIndex]), fit: BoxFit.cover),
                         ),
                       );
                     },
@@ -603,7 +587,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           
-          // 🔥 AFTER IMAGES
           if (isResolved && afterImages.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,21 +595,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      Text(
-                        'After Images (Resolution Proof)',
-                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.green),
-                      ),
+                      Text('After Images (Resolution Proof)', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.green)),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Resolved',
-                          style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green),
-                        ),
+                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                        child: Text('Resolved', style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green)),
                       ),
                     ],
                   ),
@@ -648,10 +622,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
-                          image: DecorationImage(
-                            image: NetworkImage(afterImages[imgIndex]),
-                            fit: BoxFit.cover,
-                          ),
+                          image: DecorationImage(image: NetworkImage(afterImages[imgIndex]), fit: BoxFit.cover),
                         ),
                       );
                     },
@@ -665,10 +636,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Description:',
-                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D)),
-                ),
+                Text('Description:', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0F1A3D))),
                 const SizedBox(height: 8),
                 Text(
                   complaint['description'] ?? 'No description provided',
@@ -708,31 +676,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             size: 20,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            '${complaint['upvoteCount'] ?? 0}',
-                            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
-                          ),
+                          Text('${complaint['upvoteCount'] ?? 0}', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700])),
                         ],
                       ),
                     ),
                     const SizedBox(width: 16),
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CommentsScreen(complaint: complaint),
-                          ),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => CommentsScreen(complaint: complaint)));
                       },
                       child: Row(
                         children: [
                           const Icon(Icons.comment_outlined, color: Colors.grey, size: 20),
                           const SizedBox(width: 4),
-                          Text(
-                            '${complaint['commentCount'] ?? 0}',
-                            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
-                          ),
+                          Text('${complaint['commentCount'] ?? 0}', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700])),
                         ],
                       ),
                     ),
