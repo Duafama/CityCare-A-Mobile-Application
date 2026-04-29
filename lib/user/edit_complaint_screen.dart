@@ -70,29 +70,102 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
         }
         setState(() {
           _categories = activeCategories;
+          if (!_categories.any((c) => c['name'] == 'Other')) {
+            _categories.add({'id': 'other', 'name': 'Other'});
+          }
+          // ✅ Fix: Ensure selected category exists in list
+          if (!_categories.any((cat) => cat['name'] == _selectedCategory)) {
+            _selectedCategory = _categories.isNotEmpty ? _categories.first['name'] : 'Other';
+          }
           _isLoadingCategories = false;
         });
-        if (!_categories.any((c) => c['name'] == 'Other')) {
-          setState(() => _categories.add({'id': 'other', 'name': 'Other'}));
-        }
         return;
       }
 
       setState(() {
         _categories = snapshot.docs.map((doc) => {'id': doc.id, 'name': doc['name']}).toList();
+        if (!_categories.any((c) => c['name'] == 'Other')) {
+          _categories.add({'id': 'other', 'name': 'Other'});
+        }
+        // ✅ Fix: Ensure selected category exists in list
+        if (!_categories.any((cat) => cat['name'] == _selectedCategory)) {
+          _selectedCategory = _categories.isNotEmpty ? _categories.first['name'] : 'Other';
+        }
         _isLoadingCategories = false;
       });
-      if (!_categories.any((c) => c['name'] == 'Other')) {
-        setState(() => _categories.add({'id': 'other', 'name': 'Other'}));
-      }
     } catch (e) {
       setState(() {
         _categories = [{'id': 'other', 'name': 'Other'}];
+        _selectedCategory = 'Other'; // fallback
         _isLoadingCategories = false;
       });
     }
   }
-
+// ✅ YAHAN PE LAGAYEIN
+  void _showCategoryBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Select Category',
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Divider(),
+              ..._categories.map((cat) {
+                bool isSelected = cat['name'] == _selectedCategory;
+                return ListTile(
+                  leading: Icon(
+                    Icons.circle,
+                    size: 12,
+                    color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[400],
+                  ),
+                  title: Text(
+                    cat['name'],
+                    style: GoogleFonts.poppins(
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle, color: Color(0xFF4A6FFF))
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedCategory = cat['name'];
+                    });
+                    Navigator.pop(context);
+                  },
+                );
+              }).toList(),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  
+  
   Future<void> _checkLocationPermission() async {
     var status = await Permission.location.status;
     if (status.isDenied) await Permission.location.request();
@@ -257,36 +330,61 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
                 children: [
                   Text('Edit Complaint Details', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
                   const SizedBox(height: 20),
-                  _buildLabel('Category:'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[300]!)),
-                    child: _isLoadingCategories
-                        ? const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
-                        : DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _categories.any((cat) => cat['name'] == _selectedCategory) ? _selectedCategory : null,
-                              isExpanded: true,
-                              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF4A6FFF)),
-                              items: [
-                                const DropdownMenuItem<String>(
-                                  value: 'Select a Category',
-                                  child: Padding(padding: EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text('Select a Category', style: TextStyle(color: Colors.grey))),
-                                ),
-                                ..._categories.map((category) => DropdownMenuItem<String>(
-                                      value: category['name'],
-                                      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
-                                          child: Text(category['name'], style: GoogleFonts.poppins(fontSize: 15, color: const Color(0xFF0F1A3D)))),
-                                    )),
-                              ],
-                              onChanged: (String? newValue) {
-                                if (newValue != null) setState(() => _selectedCategory = newValue);
-                              },
-                            ),
-                          ),
+                  // Category ke liye jo purani DropdownButton wali code hai, uski jagah ye lagayein:
+
+_buildLabel('Category:'),
+const SizedBox(height: 8),
+Container(
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+    boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 8)],
+  ),
+  child: _isLoadingCategories
+      ? const Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator(color: Color(0xFF4A6FFF))),
+        )
+      : GestureDetector(
+          onTap: () => _showCategoryBottomSheet(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(color: Color(0xFF4A6FFF), shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+  child: Text(
+    _selectedCategory,
+    style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500, color: const Color(0xFF0F1A3D)),
+    overflow: TextOverflow.ellipsis,
+  ),
+),
+                    ],
                   ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4A6FFF).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Icon(Icons.arrow_drop_down, color: Color(0xFF4A6FFF), size: 24),
+                ),
+              ],
+            ),
+          ),
+        ),
+),
                   const SizedBox(height: 20),
                   _buildLabel('Description:'),
                   const SizedBox(height: 8),
