@@ -62,7 +62,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             /// Count status
             if (status == "Pending") pending++;
             if (status == "Approved") approved++;
-            if (status == "In Progress") inProgress++;
+            if (status == "InProgress") inProgress++;
             if (status == "Resolved") resolved++;
 
             /// Count departments
