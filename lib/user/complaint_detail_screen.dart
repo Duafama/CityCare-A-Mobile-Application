@@ -227,7 +227,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           final data = doc.data() as Map<String, dynamic>;
           return TimelineEvent(
             status: data['status'] ?? '',
-            message: data['comment'] ?? '',
+            message: data['message'] ?? '',
             timestamp: (data['timestamp'] as Timestamp).toDate(),
           );
         }).toList();

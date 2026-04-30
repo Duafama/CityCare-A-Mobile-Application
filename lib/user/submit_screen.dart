@@ -934,6 +934,18 @@ class _SubmitContentState extends State<SubmitContent> {
         'commentCount': 0,
       });
 
+
+// 🔥 Add Pending timeline event
+await FirebaseFirestore.instance
+    .collection('complaints')
+    .doc(complaintId)
+    .collection('timeline')
+    .add({
+  'status': 'Pending',
+  'timestamp': FieldValue.serverTimestamp(),
+  'message': 'Complaint submitted',
+  'updatedBy': _currentUser!.uid,
+});
       _showSnackBar(
           '✅ Complaint submitted! Priority: $suggestedPriority', context);
 
