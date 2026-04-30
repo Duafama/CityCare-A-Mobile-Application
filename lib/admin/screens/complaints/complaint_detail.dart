@@ -230,8 +230,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               if (isInvalidCategory) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content:
-                        Text("Please select a valid category before approval"),
+                    content: Text("Please select a valid category"),
                   ),
                 );
                 return;
@@ -290,6 +289,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     }
 
     final isPending = data!['status'] == "Pending";
+    final isResolved = data!['status'] == "Resolved";
     final isOther = selectedCategory == "Other";
 
     final beforeImages = List<String>.from(data!['beforeImages'] ?? []);
@@ -370,8 +370,22 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               ),
             ],
 
-            const SizedBox(height: 20),
+            if (isResolved && afterImages.isNotEmpty) ...[
+              const Text(
+                "After Images",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 100,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: afterImages.map(_imageItem).toList(),
+                ),
+              ),
+            ],
 
+            const SizedBox(height: 20),
             // ================= APPROVE / REJECT =================
             if (isPending)
               Row(
