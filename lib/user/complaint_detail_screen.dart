@@ -23,7 +23,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final String complaintId = widget.complaint['complaintId'] ?? widget.complaint['id'];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1A3D),
+      backgroundColor: const Color.fromARGB(255, 238, 238, 238),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0F1A3D),
         elevation: 0,
@@ -54,9 +54,16 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           final location = complaintData['location'] ?? 'No location';
           final description = complaintData['description'] ?? 'No description';
           final date = _formatDate(complaintData['createdAt']);
-          List<String> images = [];
+         // ✅ Before images (always show)
+          List<String> beforeImages = [];
           if (complaintData['beforeImages'] != null && complaintData['beforeImages'] is List) {
-            images = List<String>.from(complaintData['beforeImages']);
+             beforeImages = List<String>.from(complaintData['beforeImages']);
+            }
+
+          // ✅ After images (only if resolved)
+          List<String> afterImages = [];
+        if (statusString == 'Resolved' && complaintData['afterImages'] != null && complaintData['afterImages'] is List) {
+        afterImages = List<String>.from(complaintData['afterImages']);
           }
 
           return SingleChildScrollView(
@@ -145,60 +152,121 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 ),
                 const SizedBox(height: 20),
                 // Images Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Attached Images', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
-                      const SizedBox(height: 15),
-                      if (images.isNotEmpty)
-  GridView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 2,
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: 1.2,
+                // ========== BEFORE IMAGES SECTION ==========
+if (beforeImages.isNotEmpty)
+  Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 20),
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
     ),
-    itemCount: images.length,
-    itemBuilder: (context, index) => GestureDetector(
-      onTap: () => _showFullScreenImage(context, images, index),
-      child: Hero(
-        tag: 'image_$index',
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(image: NetworkImage(images[index]), fit: BoxFit.cover),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Before Images', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
+        const SizedBox(height: 15),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.2,
+          ),
+          itemCount: beforeImages.length,
+          itemBuilder: (context, index) => GestureDetector(
+            onTap: () => _showFullScreenImage(context, beforeImages, index),
+            child: Hero(
+              tag: 'before_image_$index',
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(image: NetworkImage(beforeImages[index]), fit: BoxFit.cover),
+                ),
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     ),
-  )
-                      else
-                        Container(
-                          height: 100,
-                          width: double.infinity,
-                          decoration: BoxDecoration(color: const Color(0xFFF0F2F5), borderRadius: BorderRadius.circular(12)),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 40),
-                              const SizedBox(height: 10),
-                              Text('No images attached', style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600])),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
+  ),
+
+// ========== AFTER IMAGES SECTION (only if resolved) ==========
+if (statusString == 'Resolved' && afterImages.isNotEmpty)
+  Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 20),
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('After Images', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.green)),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+              child: Text('Resolved', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.2,
+          ),
+          itemCount: afterImages.length,
+          itemBuilder: (context, index) => GestureDetector(
+            onTap: () => _showFullScreenImage(context, afterImages, index),
+            child: Hero(
+              tag: 'after_image_$index',
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.withOpacity(0.5), width: 2),
+                  image: DecorationImage(image: NetworkImage(afterImages[index]), fit: BoxFit.cover),
                 ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+
+// If no images at all (both empty)
+if (beforeImages.isEmpty && (statusString != 'Resolved' || afterImages.isEmpty))
+  Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+    ),
+    child: Column(
+      children: [
+        const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 50),
+        const SizedBox(height: 10),
+        Text('No images attached', style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600])),
+      ],
+    ),
+  ),
               ],
             ),
           );
