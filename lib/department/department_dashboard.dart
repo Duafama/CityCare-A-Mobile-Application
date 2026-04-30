@@ -112,27 +112,32 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
                   ),
                   const SizedBox(height: 12),
 
-                  Row(
+                  Column(
                     children: [
-                      Expanded(
-                        child: DashboardCard(
-                          title: "Assigned", // rename this too
-                          count: newCount.toString(),
-                          color: const Color(0xFFFFA726),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DashboardCard(
+                              title: "Assigned",
+                              count: newCount.toString(),
+                              color: const Color(0xFFFFA726),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DashboardCard(
+                              title: "In Progress",
+                              count: progressCount.toString(),
+                              color: const Color(0xFF43A047),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
 
-                      Expanded(
-                        child: DashboardCard(
-                          title: "In Progress",
-                          count: progressCount.toString(),
-                          color: const Color(0xFF43A047),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                      const SizedBox(height: 12),
 
-                      Expanded(
+                      SizedBox(
+                        width: double.infinity,
                         child: DashboardCard(
                           title: "Resolved",
                           count: resolvedCount.toString(),
@@ -141,7 +146,6 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 28),
 
                   /// ---- Section: Manage Users (officers only) ----
@@ -304,13 +308,15 @@ class DashboardCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
-            ),
+          title,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
           ),
+        )
         ],
       ),
     );

@@ -26,7 +26,6 @@ class _DepartmentComplaintListState extends State<DepartmentComplaintList> {
 
   final List<String> filters = [
     "All",
-    "Pending",
     "Approved",
     "InProgress",
     "Resolved",
@@ -355,8 +354,6 @@ class ComplaintCard extends StatelessWidget {
         return Colors.blue;
       case "Resolved":
         return Colors.teal;
-      case "Pending":
-        return Colors.orange;
       default:
         return Colors.grey;
     }
