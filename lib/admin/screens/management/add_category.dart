@@ -65,17 +65,17 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
     }
   }
 
-  bool _isActive(String id) {
-    return departments.firstWhere((d) => d.id == id).status == "active";
-  }
-
   // ---------------- SUBMIT ----------------
   Future<void> _submit() async {
+    print("BUTTON CLICKED"); // debug
+
     if (!_formKey.currentState!.validate()) return;
 
     if (selectedDeptId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a department")),
+        const SnackBar(
+          content: Text("⚠️ Please select a department"),
+        ),
       );
       return;
     }
@@ -97,6 +97,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
 
       Navigator.pop(context);
     } catch (e) {
+      print("ERROR: $e"); // important debug
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
@@ -110,21 +111,24 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
     return DropdownButtonFormField<String>(
       value: selectedDeptId,
       isExpanded: true,
-      decoration: const InputDecoration(
+      borderRadius: BorderRadius.circular(12),
+      decoration: InputDecoration(
         labelText: "Select Department",
-        prefixIcon: Icon(Icons.apartment, color: primaryBlue),
-        border: OutlineInputBorder(),
+        prefixIcon: const Icon(Icons.apartment, color: primaryBlue),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
-
       items: departments.map((dept) {
         final isActive = dept.status == "active";
 
         return DropdownMenuItem<String>(
           value: dept.id,
-
-          // ❌ DISABLE INACTIVE ITEMS VISUALLY
           enabled: isActive,
-
           child: Row(
             children: [
               Icon(
@@ -141,7 +145,6 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               Text(
                 isActive ? "Active" : "Inactive",
                 style: TextStyle(
@@ -153,8 +156,6 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
           ),
         );
       }).toList(),
-
-      // ---------------- BLOCK INACTIVE SELECTION ----------------
       onChanged: (value) {
         if (value == null) return;
 
@@ -174,7 +175,6 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
           selectedDeptId = value;
         });
       },
-
       validator: (val) => val == null ? "Select department" : null,
     );
   }
@@ -212,50 +212,55 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Category Information",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: "Category Name",
-                  prefixIcon: Icon(Icons.category, color: primaryBlue),
+
+          // ✅ FIXED: FORM ADDED HERE
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Category Information",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                validator: _validateName,
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                "Department Selection",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _departmentDropdown(),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: "Category Name",
+                    prefixIcon: Icon(Icons.category, color: primaryBlue),
                   ),
-                  onPressed: saving ? null : _submit,
-                  child: saving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "Create Category",
-                          style: TextStyle(color: Colors.white),
-                        ),
+                  validator: _validateName,
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                const Text(
+                  "Department Selection",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                _departmentDropdown(),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: saving ? null : _submit,
+                    child: saving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            "Create Category",
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
