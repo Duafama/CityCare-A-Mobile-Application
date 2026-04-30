@@ -47,6 +47,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_native_splash: ^2.4.5
 
 flutter:
   uses-material-design: true
@@ -56,3 +57,15 @@ flutter:
     - assets/images/
     
     - .env   # Add this line
+
+
+
+flutter_native_splash:
+  color: "#0F1A3D"
+  image: assets/images/splash.jpeg
+  android: true
+  ios: true 
+  android_12:
+    image: assets/images/logo.png
+    icon_background_color: "#0F1A3D"
+

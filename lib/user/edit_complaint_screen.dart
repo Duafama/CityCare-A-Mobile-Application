@@ -102,15 +102,20 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
     }
   }
 // ✅ YAHAN PE LAGAYEIN
-  void _showCategoryBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: Colors.white,
-      builder: (context) {
-        return SafeArea(
+void _showCategoryBottomSheet() {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    backgroundColor: Colors.white,
+    isScrollControlled: true,   // ⬅️ important
+    builder: (context) {
+      return SafeArea(
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8, // ⬅️ limit height
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -131,38 +136,46 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
                 ),
               ),
               const Divider(),
-              ..._categories.map((cat) {
-                bool isSelected = cat['name'] == _selectedCategory;
-                return ListTile(
-                  leading: Icon(
-                    Icons.circle,
-                    size: 12,
-                    color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[400],
+              Expanded(   // ⬅️ ye scrollable banata hai
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: _categories.map((cat) {
+                      bool isSelected = cat['name'] == _selectedCategory;
+                      return ListTile(
+                        leading: Icon(
+                          Icons.circle,
+                          size: 12,
+                          color: isSelected ? const Color(0xFF4A6FFF) : Colors.grey[400],
+                        ),
+                        title: Text(
+                          cat['name'],
+                          style: GoogleFonts.poppins(
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle, color: Color(0xFF4A6FFF))
+                            : null,
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = cat['name'];
+                          });
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
                   ),
-                  title: Text(
-                    cat['name'],
-                    style: GoogleFonts.poppins(
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: Color(0xFF4A6FFF))
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _selectedCategory = cat['name'];
-                    });
-                    Navigator.pop(context);
-                  },
-                );
-              }).toList(),
+                ),
+              ),
               const SizedBox(height: 12),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
   
   
   
@@ -321,6 +334,7 @@ class _EditComplaintScreenState extends State<EditComplaintScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
+              
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),

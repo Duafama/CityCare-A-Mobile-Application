@@ -104,9 +104,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
         .collection('complaints')
         .doc(complaintId)
         .update({'commentCount': FieldValue.increment(1)});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Comment posted!'), backgroundColor: Colors.green),
-    );
+    
   }
   _commentController.clear();
 }
@@ -158,9 +156,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
         .collection('complaints')
         .doc(complaintId)
         .update({'commentCount': FieldValue.increment(1)});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Reply posted!'), backgroundColor: Colors.green),
-    );
+    
   }
   _replyController.clear();
   setState(() {
@@ -182,41 +178,63 @@ class _CommentsScreenState extends State<CommentsScreen> {
   }
 
   // Delete comment/reply
-  Future<void> _deleteComment(String commentId, String complaintId, bool isFlagged) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete Comment', style: GoogleFonts.poppins(color: Colors.white)),
-        content: Text('Are you sure you want to delete this comment?', style: GoogleFonts.poppins(color: Colors.white70)),
-        backgroundColor: const Color(0xFF1E2B4F),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white70))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red))),
-        ],
-      ),
+ Future<void> _deleteComment(String commentId, String complaintId, bool isFlagged) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('Delete Comment', style: GoogleFonts.poppins(color: Colors.white)),
+      content: Text('Are you sure you want to delete this comment and its replies?',
+          style: GoogleFonts.poppins(color: Colors.white70)),
+      backgroundColor: const Color(0xFF1E2B4F),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white70))),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red))),
+      ],
+    ),
+  );
+  if (confirm != true) return;
+
+  try {
+    final commentRef = FirebaseFirestore.instance.collection('comments').doc(commentId);
+    final complaintRef = FirebaseFirestore.instance.collection('complaints').doc(complaintId);
+
+    // Get ALL replies for deletion (including flagged ones)
+    final QuerySnapshot allRepliesSnapshot = await FirebaseFirestore.instance
+        .collection('comments')
+        .where('parentId', isEqualTo: commentId)
+        .get();
+    final List<String> allReplyIds = allRepliesSnapshot.docs.map((doc) => doc.id).toList();
+
+    // Get VISIBLE replies count (isFlagged == false) for decrement
+    final QuerySnapshot visibleRepliesSnapshot = await FirebaseFirestore.instance
+        .collection('comments')
+        .where('parentId', isEqualTo: commentId)
+        .where('isFlagged', isEqualTo: false)
+        .get();
+    final int visibleReplyCount = visibleRepliesSnapshot.docs.length;
+
+    final int totalDecrement = 1 + visibleReplyCount;  // only visible ones
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // Delete main comment
+      transaction.delete(commentRef);
+      // Delete ALL replies (flagged + non-flagged)
+      for (String replyId in allReplyIds) {
+        transaction.delete(FirebaseFirestore.instance.collection('comments').doc(replyId));
+      }
+      // Update commentCount only if main comment was visible
+      if (!isFlagged) {
+        transaction.update(complaintRef, {'commentCount': FieldValue.increment(-totalDecrement)});
+      }
+    });
+
+   
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
     );
-    if (confirm != true) return;
-
-    try {
-      final commentRef = FirebaseFirestore.instance.collection('comments').doc(commentId);
-      final complaintRef = FirebaseFirestore.instance.collection('complaints').doc(complaintId);
-
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        if (!isFlagged) {
-          transaction.update(complaintRef, {'commentCount': FieldValue.increment(-1)});
-        }
-        transaction.delete(commentRef);
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Comment deleted'), backgroundColor: Colors.green),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
   }
+}
 
   void _scrollToBottom() {
     if (_replyScrollController.hasClients) {
