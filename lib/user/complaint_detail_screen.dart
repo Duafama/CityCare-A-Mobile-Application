@@ -159,23 +159,29 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       Text('Attached Images', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
                       const SizedBox(height: 15),
                       if (images.isNotEmpty)
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1.2,
-                          ),
-                          itemCount: images.length,
-                          itemBuilder: (context, index) => Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              image: DecorationImage(image: NetworkImage(images[index]), fit: BoxFit.cover),
-                            ),
-                          ),
-                        )
+  GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.2,
+    ),
+    itemCount: images.length,
+    itemBuilder: (context, index) => GestureDetector(
+      onTap: () => _showFullScreenImage(context, images, index),
+      child: Hero(
+        tag: 'image_$index',
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            image: DecorationImage(image: NetworkImage(images[index]), fit: BoxFit.cover),
+          ),
+        ),
+      ),
+    ),
+  )
                       else
                         Container(
                           height: 100,
@@ -348,4 +354,32 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     if (timestamp == null) return 'No date';
     return '${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}';
   }
+  void _showFullScreenImage(BuildContext context, List<String> images, int initialIndex) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.network(images[initialIndex]),
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 }
