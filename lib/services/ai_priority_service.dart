@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AIService {
   // ==================== TRAINING DATA ====================
   static final Map<String, List<Map<String, dynamic>>> _advancedTraining = {
-    'HIGH': [
+    'High': [
       {
         'keywords': ['accident', 'crash', 'collision', 'hit and run'],
         'weight': 10
@@ -47,7 +47,7 @@ class AIService {
         'weight': 8
       },
     ],
-    'MEDIUM': [
+    'Medium': [
       {
         'keywords': ['pothole', 'road damage', 'uneven road'],
         'weight': 6
@@ -93,7 +93,7 @@ class AIService {
         'weight': 4
       },
     ],
-    'LOW': [
+    'Low': [
       {
         'keywords': ['graffiti', 'wall painting', 'vandalism art'],
         'weight': 2
@@ -126,23 +126,23 @@ class AIService {
   };
 
   static final Map<String, Map<String, int>> _categoryWeights = {
-    'Emergency': {'HIGH': 20, 'MEDIUM': 0, 'LOW': 0},
-    'Safety': {'HIGH': 15, 'MEDIUM': 5, 'LOW': 0},
-    'Infrastructure': {'HIGH': 5, 'MEDIUM': 10, 'LOW': 2},
-    'Roads': {'HIGH': 8, 'MEDIUM': 8, 'LOW': 1},
+    'Emergency': {'High': 20, 'Medium': 0, 'Low': 0},
+    'Safety': {'High': 15, 'Medium': 5, 'Low': 0},
+    'Infrastructure': {'High': 5, 'Medium': 10, 'Low': 2},
+    'Roads': {'High': 8, 'Medium': 8, 'Low': 1},
     'Water & Drainage': {
-      'HIGH': 0,
-      'MEDIUM': 12,
-      'LOW': 3
+      'High': 0,
+      'Medium': 12,
+      'Low': 3
     }, // Fixed: No HIGH for water
     'Waste Management': {
-      'HIGH': 0,
-      'MEDIUM': 10,
-      'LOW': 5
+      'High': 0,
+      'Medium': 10,
+      'Low': 5
     }, // Fixed: No HIGH for waste
-    'Electricity': {'HIGH': 10, 'MEDIUM': 6, 'LOW': 1},
-    'Public Health': {'HIGH': 15, 'MEDIUM': 5, 'LOW': 0},
-    'Other': {'HIGH': 0, 'MEDIUM': 5, 'LOW': 5},
+    'Electricity': {'High': 10, 'Medium': 6, 'Low': 1},
+    'Public Health': {'High': 15, 'Medium': 5, 'Low': 0},
+    'Other': {'High': 0, 'Medium': 5, 'Low': 5},
   };
 
   // ==================== MAIN FUNCTION - Keyword First, AI Fallback ====================
@@ -166,7 +166,7 @@ class AIService {
     }
 
     // STEP 4: Ultimate fallback
-    return 'MEDIUM';
+    return 'Medium';
   }
 
   // ==================== KEYWORD PRIORITY (Primary) ====================
@@ -174,21 +174,21 @@ class AIService {
     final ruleScore = _calculateRuleBasedScore(description, category);
 
     // Calculate total score
-    int highScore = ruleScore['HIGH'] ?? 0;
-    int mediumScore = ruleScore['MEDIUM'] ?? 0;
-    int lowScore = ruleScore['LOW'] ?? 0;
+    int highScore = ruleScore['High'] ?? 0;
+    int mediumScore = ruleScore['Medium'] ?? 0;
+    int lowScore = ruleScore['Low'] ?? 0;
 
     // If any score is significantly higher, return it
     if (highScore > mediumScore && highScore > lowScore && highScore >= 5) {
-      return 'HIGH';
+      return 'High';
     }
     if (lowScore > highScore && lowScore > mediumScore && lowScore >= 3) {
-      return 'LOW';
+      return 'Low';
     }
     if (mediumScore > 0 &&
         mediumScore >= highScore &&
         mediumScore >= lowScore) {
-      return 'MEDIUM';
+      return 'Medium';
     }
 
     // No clear keyword match
@@ -197,7 +197,7 @@ class AIService {
 
   // ==================== IMAGE ANALYSIS ====================
   static Future<Map<String, int>> _analyzeImages(List<String> imageUrls) async {
-    Map<String, int> imageScores = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0};
+    Map<String, int> imageScores = {'High': 0, 'Medium': 0, 'Low': 0};
 
     if (imageUrls.isEmpty) {
       return imageScores;
@@ -227,11 +227,11 @@ class AIService {
 Analyze these complaint images and determine priority based on VISUAL EVIDENCE only.
 
 VISUAL RULES:
-- HIGH: Visible fire, smoke, flood, collapsed structure, accident, injured person, open manhole, fallen electric pole, severe damage
-- MEDIUM: Large pothole, garbage pile, water logging, broken infrastructure, clogged drain
-- LOW: Graffiti, minor cracks, overgrown plants, cosmetic issues
+- High: Visible fire, smoke, flood, collapsed structure, accident, injured person, open manhole, fallen electric pole, severe damage
+- Medium: Large pothole, garbage pile, water logging, broken infrastructure, clogged drain
+- Low: Graffiti, minor cracks, overgrown plants, cosmetic issues
 
-Return ONLY JSON: {"priority": "HIGH", "confidence": 90}
+Return ONLY JSON: {"priority": "High", "confidence": 90}
 ''';
 
       final response = await http.post(
@@ -259,12 +259,12 @@ Return ONLY JSON: {"priority": "HIGH", "confidence": 90}
           final jsonData = jsonDecode(jsonMatch.group(0)!);
           final priority = jsonData['priority']?.toString().toUpperCase();
 
-          if (priority == 'HIGH') {
-            imageScores['HIGH'] = imageScores['HIGH']! + 15;
-          } else if (priority == 'MEDIUM') {
-            imageScores['MEDIUM'] = imageScores['MEDIUM']! + 10;
-          } else if (priority == 'LOW') {
-            imageScores['LOW'] = imageScores['LOW']! + 5;
+          if (priority == 'High') {
+            imageScores['High'] = imageScores['High']! + 15;
+          } else if (priority == 'Medium') {
+            imageScores['Medium'] = imageScores['Medium']! + 10;
+          } else if (priority == 'Low') {
+            imageScores['Low'] = imageScores['Low']! + 5;
           }
         }
       }
@@ -292,7 +292,7 @@ Return ONLY JSON: {"priority": "HIGH", "confidence": 90}
   static Map<String, int> _calculateRuleBasedScore(
       String description, String category) {
     final text = description.toLowerCase();
-    Map<String, int> scores = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0};
+    Map<String, int> scores = {'High': 0, 'Medium': 0, 'LOW': 0};
 
     // Score from keywords
     for (var level in _advancedTraining.keys) {
@@ -308,9 +308,9 @@ Return ONLY JSON: {"priority": "HIGH", "confidence": 90}
     // Score from category
     final categoryWeight = _categoryWeights[category];
     if (categoryWeight != null) {
-      scores['HIGH'] = scores['HIGH']! + (categoryWeight['HIGH'] ?? 0);
-      scores['MEDIUM'] = scores['MEDIUM']! + (categoryWeight['MEDIUM'] ?? 0);
-      scores['LOW'] = scores['LOW']! + (categoryWeight['LOW'] ?? 0);
+      scores['High'] = scores['High']! + (categoryWeight['High'] ?? 0);
+      scores['Medium'] = scores['Medium']! + (categoryWeight['Medium'] ?? 0);
+      scores['Low'] = scores['Low']! + (categoryWeight['Low'] ?? 0);
     }
 
     // 🔥 Special rule: Water quality should NOT be HIGH
@@ -319,9 +319,9 @@ Return ONLY JSON: {"priority": "HIGH", "confidence": 90}
             text.contains('dirty') ||
             text.contains('contaminated') ||
             text.contains('smelly'))) {
-      if (scores['HIGH']! > 0) {
-        scores['MEDIUM'] = scores['MEDIUM']! + scores['HIGH']!;
-        scores['HIGH'] = 0;
+      if (scores['High']! > 0) {
+        scores['Medium'] = scores['Medium']! + scores['High']!;
+        scores['High'] = 0;
       }
     }
 
@@ -354,7 +354,7 @@ You are an expert city complaint analyst. Analyze this complaint.
 Category: $category
 Description: $description
 
-Return ONLY ONE WORD: HIGH, MEDIUM, or LOW
+Return ONLY ONE WORD: High, Medium, or Low
 ''';
 
       final response = await http.post(
@@ -378,9 +378,9 @@ Return ONLY ONE WORD: HIGH, MEDIUM, or LOW
         final text =
             data["candidates"][0]["content"]["parts"][0]["text"].toUpperCase();
 
-        if (text.contains('HIGH')) return 'HIGH';
-        if (text.contains('MEDIUM')) return 'MEDIUM';
-        if (text.contains('LOW')) return 'LOW';
+        if (text.contains('High')) return 'High';
+        if (text.contains('Medium')) return 'Medium';
+        if (text.contains('Low')) return 'Low';
       }
 
       return '';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../services/notification_service.dart';  // ✅ Ye hona chahiye
+import '../../../services/notification_service.dart'; // ✅ Ye hona chahiye
 
 import '../../../services/departmentComplaintService.dart';
 
@@ -134,7 +134,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     String oldStatus = data!['status'] ?? 'Pending';
     String citizenId = data!['citizenId'];
     String complaintTitle = data!['categoryName'] ?? 'Complaint';
-    
+
     await _service.updateComplaintStatus(docId!, status);
     await FirebaseFirestore.instance
         .collection('complaints')
@@ -150,22 +150,22 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       "departmentName": selectedDept ?? data!['departmentName'],
     });
     // 🔥 SEND NOTIFICATION TO CITIZEN
-  await NotificationService.notifyStatusChange(
-    userId: citizenId,
-    complaintId: docId!,
-    complaintTitle: complaintTitle,
-    oldStatus: oldStatus,
-    newStatus: status,
-  );
+    await NotificationService.notifyStatusChange(
+      userId: citizenId,
+      complaintId: docId!,
+      complaintTitle: complaintTitle,
+      oldStatus: oldStatus,
+      newStatus: status,
+    );
     setState(() => data!['status'] = status);
     // 🔥 SHOW SNACKBAR CONFIRMATION
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Status updated to $status and citizen notified'),
-      backgroundColor: Colors.green,
-      duration: const Duration(seconds: 2),
-    ),
-  );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Status updated to $status and citizen notified'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   // ===================== UPDATE CATEGORY (AUTO DEPT) =====================
