@@ -87,11 +87,11 @@ class _AdminOverallReportScreenState extends State<AdminOverallReportScreen> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
-                          childAspectRatio: 0.9,
+                          childAspectRatio: 1.6,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
                             ReportStatCard(
-                              label: "Total Complaints",
+                              label: "Total ",
                               value: total.toString(),
                               icon: Icons.bar_chart,
                               color: kPrimaryBlue,
