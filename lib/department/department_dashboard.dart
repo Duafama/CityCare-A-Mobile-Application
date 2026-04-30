@@ -56,8 +56,6 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
 
       setState(() {
         newCount =
-            complaints.where((c) => c.status == "Pending").length;
-        activeCount =
             complaints.where((c) => c.status == "Approved").length;
         progressCount =
             complaints.where((c) => c.status == "InProgress").length;
@@ -114,32 +112,32 @@ class _DepartmentDashboardState extends State<DepartmentDashboard> {
                   ),
                   const SizedBox(height: 12),
 
-                  GridView.count(
-                    shrinkWrap: true,
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    physics: const NeverScrollableScrollPhysics(),
+                  Row(
                     children: [
-                      DashboardCard(
-                        title: "New",
-                        count: newCount.toString(),
-                        color: const Color(0xFFFFA726),
+                      Expanded(
+                        child: DashboardCard(
+                          title: "Assigned", // rename this too
+                          count: newCount.toString(),
+                          color: const Color(0xFFFFA726),
+                        ),
                       ),
-                      DashboardCard(
-                        title: "Active",
-                        count: activeCount.toString(),
-                        color: const Color(0xFF1E88E5),
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: DashboardCard(
+                          title: "In Progress",
+                          count: progressCount.toString(),
+                          color: const Color(0xFF43A047),
+                        ),
                       ),
-                      DashboardCard(
-                        title: "In Progress",
-                        count: progressCount.toString(),
-                        color: const Color(0xFF43A047),
-                      ),
-                      DashboardCard(
-                        title: "Resolved",
-                        count: resolvedCount.toString(),
-                        color: const Color(0xFF00897B),
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: DashboardCard(
+                          title: "Resolved",
+                          count: resolvedCount.toString(),
+                          color: const Color(0xFF00897B),
+                        ),
                       ),
                     ],
                   ),
