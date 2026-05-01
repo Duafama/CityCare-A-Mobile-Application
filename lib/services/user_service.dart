@@ -1,13 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:city_care/services/user_service.dart';
-import 'package:city_care/services/cloudinary_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
 
   // Singleton pattern
   static final UserService _instance = UserService._internal();
@@ -22,8 +18,8 @@ class UserService {
     required String phone,
     required String paymentMethod,
     required double registrationFee,
-    String? profileImageUrl, //
-    String? departmentId, // 🔥 NEW: Department ID (null for citizens)
+    String? profileImageUrl, 
+    String? departmentId, //  Department ID (null for citizens)
   }) async {
     try {
       // Create user document in 'users' collection
@@ -115,7 +111,7 @@ class UserService {
     }
   }
 
-// 🔥 NEW: Update user type (citizen to department officer)
+// 🔥  Update user type (citizen to department officer)
   Future<String?> updateUserType(String uid, String userType,
       {String? departmentId}) async {
     try {
@@ -127,7 +123,7 @@ class UserService {
       if (departmentId != null) {
         updates['departmentId'] = departmentId;
       } else if (userType == 'citizen') {
-        updates['departmentId'] = null; // Citizens ka departmentId null
+        updates['departmentId'] = null; // dpt id of citizens null
       }
 
       await _firestore.collection('users').doc(uid).update(updates);
@@ -137,7 +133,7 @@ class UserService {
     }
   }
 
-  // 🔥 NEW: Check if user is department officer
+  // Check if user is department officer
   Future<bool> isDepartmentOfficer(String uid) async {
     try {
       DocumentSnapshot doc =
@@ -152,7 +148,7 @@ class UserService {
     }
   }
 
-  // 🔥 NEW: Get department ID of user
+  //  Get department ID of user
   Future<String?> getDepartmentId(String uid) async {
     try {
       DocumentSnapshot doc =

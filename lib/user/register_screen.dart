@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:city_care/services/auth_service.dart';
-import 'package:city_care/services/payment_service.dart'; // ✅ ADD THIS
+import 'package:city_care/services/payment_service.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -113,7 +114,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
            _selectedPaymentMethod != null;
   }
 
-  // 🔴 UPDATED REGISTER METHOD WITH PAYMENT (SAME VALIDATION, ADDED PAYMENT)
+  
+// 🔴 UPDATED REGISTER METHOD WITH PAYMENT (SAME VALIDATION, ADDED PAYMENT)
   Future<void> _register() async {
     if (!_isFormValid()) {
       // Show specific error messages (YOUR EXISTING VALIDATION)
@@ -160,7 +162,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       
       final paymentResult = await PaymentService.makePayment(
         amount: 50000, // Rs. 500 in paise
-        currency: 'inr', // 'inr' for India, 'pkr' for Pakistan, 'usd' for USA
+        currency: 'inr',  // 'inr' for India, 'pkr' for Pakistan, 'usd' for USA
         email: _emailController.text.trim(),
         name: _nameController.text.trim(),
       );
@@ -413,7 +415,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // 🔴 EMAIL FIELD (YOUR EXACT CODE)
+                      // 🔴 EMAIL FIELD 
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -478,7 +480,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // 🔴 PASSWORD FIELD (YOUR EXACT CODE)
+                      // 🔴 PASSWORD FIELD 
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -557,7 +559,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // 🔴 PHONE FIELD (YOUR EXACT CODE)
+                      // 🔴 PHONE FIELD 
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -623,7 +625,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 25),
 
-                      // Payment Method Section (YOUR EXACT CODE)
+                      // Payment Method Section 
                       Text(
                         'Select Payment Method',
                         style: GoogleFonts.poppins(
@@ -634,7 +636,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Payment Methods Grid (YOUR EXACT CODE)
+                      // Payment Methods Grid 
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -710,7 +712,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Terms and Conditions (YOUR EXACT CODE)
+                      // Terms and Conditions 
                       Row(
                         children: [
                           Checkbox(
@@ -788,7 +790,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       const SizedBox(height: 30),
 
-                      // 🔵 REGISTER BUTTON - FIXED NAVY BLUE (YOUR EXACT STYLE)
+                      // 🔵 REGISTER BUTTON - FIXED NAVY BLUE 
                       SizedBox(
                         width: double.infinity,
                         height: 52,

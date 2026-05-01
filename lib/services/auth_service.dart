@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ADD THIS IMPORT
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:city_care/services/user_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -30,7 +30,7 @@ class AuthService {
     required String paymentMethod,
     required double registrationFee,
     String? profileImageUrl,
-    String? departmentId, // 🔥 NEW: Optional parameter (null for citizens
+    String? departmentId, //null for citizens
   }) async {
     try {
       // 1. Create user in Firebase Auth
@@ -55,7 +55,7 @@ class AuthService {
           paymentMethod: paymentMethod,
           registrationFee: registrationFee,
           profileImageUrl: profileImageUrl,
-          departmentId: departmentId, // 🔥 NEW: Pass departmentId
+          departmentId: departmentId, 
         );
 
         if (error != null) {
@@ -159,7 +159,7 @@ class AuthService {
   }
 }
 
-  // Login method
+  
   // Login method
   Future<Map<String, dynamic>> loginWithEmail({
     required String email,
@@ -178,7 +178,7 @@ class AuthService {
         });
       }
 
-      // 🔥 FETCH ROLE + DEPARTMENT ID (ONLY ADDITION)
+      // 🔥 FETCH ROLE + DEPARTMENT ID 
       DocumentSnapshot doc =
           await _firestore.collection('users').doc(result.user!.uid).get();
 
@@ -236,8 +236,7 @@ class AuthService {
     }
   }
 
-  //
-  // Add this method in AuthService class
+  //reset password
   Future<Map<String, dynamic>> resetPassword(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
