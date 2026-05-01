@@ -33,6 +33,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _initialized = false;
 
+  // Validation error messages
+  String? _nameError;
+  String? _phoneError;
+
+  /// ---------------- VALIDATION METHODS ----------------
+  String? _validateName(String? value) {
+    if (value == null || value.isEmpty) {
+      return "Name cannot be empty";
+    }
+
+    // Remove all whitespace for checking
+    final trimmedValue = value.trim();
+    if (trimmedValue.isEmpty) {
+      return "Name cannot be empty";
+    }
+
+    // Check if name contains only letters and spaces
+    final RegExp nameRegex = RegExp(r'^[a-zA-Z\s]+$');
+    if (!nameRegex.hasMatch(trimmedValue)) {
+      return "Name should only contain letters and spaces";
+    }
+
+    // Check minimum length
+    if (trimmedValue.length < 2) {
+      return "Name must be at least 2 characters long";
+    }
+
+    // Check maximum length
+    if (trimmedValue.length > 50) {
+      return "Name must be less than 50 characters";
+    }
+
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return "Phone number cannot be empty";
+    }
+
+    // Remove all non-digit characters for validation
+    final String cleanedPhone = value.replaceAll(RegExp(r'\D'), '');
+
+    // Check if phone contains only digits
+    final RegExp phoneRegex = RegExp(r'^\d+$');
+    if (!phoneRegex.hasMatch(cleanedPhone)) {
+      return "Phone number should only contain numbers";
+    }
+
+    // Check if phone is exactly 11 digits
+    if (cleanedPhone.length != 11) {
+      return "Phone number must be exactly 11 digits";
+    }
+
+    // Optional: Check if phone starts with valid prefix (e.g., 03 for Pakistan)
+    if (!cleanedPhone.startsWith('03')) {
+      return "Phone number should start with '03'";
+    }
+
+    return null;
+  }
+
   /// ---------------- IMAGE PICK ----------------
   Future pickImage(ImageSource source) async {
     final image = await ImagePicker().pickImage(source: source);
@@ -75,6 +137,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// ---------------- SAVE PROFILE ----------------
   Future<void> _saveChanges(String uid) async {
+    // Validate fields before saving
+    final name = nameController.text;
+    final phone = phoneController.text;
+
+    setState(() {
+      _nameError = _validateName(name);
+      _phoneError = _validatePhone(phone);
+    });
+
+    // If there are validation errors, don't save
+    if (_nameError != null || _phoneError != null) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please fix the validation errors before saving"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => isSaving = true);
 
     String? imageUrl;
@@ -95,6 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => isSaving = false);
 
+    // Show success dialog
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -103,6 +187,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+            ),
             child: const Text("OK"),
           ),
         ],
@@ -133,6 +220,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 (route) => false,
               );
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+            ),
             child: const Text("Logout"),
           ),
         ],
@@ -166,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return WillPopScope(
-      onWillPop: () async => true, // ❌ prevents accidental logout
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: lightGrey,
         appBar: AppBar(
@@ -224,11 +314,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 20),
 
-                  _buildTextField("Name", nameController, Icons.person),
+                  /// NAME FIELD WITH VALIDATION
+                  _buildTextField(
+                    label: "Name",
+                    controller: nameController,
+                    icon: Icons.person,
+                    errorText: _nameError,
+                    onChanged: (value) {
+                      setState(() {
+                        _nameError = _validateName(value);
+                      });
+                    },
+                  ),
 
                   const SizedBox(height: 12),
 
-                  _buildTextField("Phone", phoneController, Icons.phone),
+                  /// PHONE FIELD WITH VALIDATION
+                  _buildTextField(
+                    label: "Phone",
+                    controller: phoneController,
+                    icon: Icons.phone,
+                    errorText: _phoneError,
+                    keyboardType: TextInputType.phone,
+                    onChanged: (value) {
+                      setState(() {
+                        _phoneError = _validatePhone(value);
+                      });
+                    },
+                  ),
 
                   const SizedBox(height: 12),
 
@@ -271,17 +384,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// ---------------- UI HELPERS ----------------
-  Widget _buildTextField(
-      String label, TextEditingController controller, IconData icon) {
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    String? errorText,
+    TextInputType? keyboardType,
+    ValueChanged<String>? onChanged,
+  }) {
     return TextField(
       controller: controller,
+      keyboardType: keyboardType ?? TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: primaryBlue),
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        errorText: errorText,
+        errorMaxLines: 2,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: primaryBlue, width: 2),
+        ),
       ),
+      onChanged: onChanged,
     );
   }
 
@@ -294,7 +423,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         filled: true,
         fillColor: Colors.grey.shade200,
         suffixIcon: const Icon(Icons.lock),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }
