@@ -473,6 +473,8 @@ class _SubmitContentState extends State<SubmitContent> {
                                 ),
                               ),
                             ],
+                            // Replace the DropdownButton onChanged handler with this:
+
                             onChanged: (String? newValue) {
                               setState(() {
                                 _selectedCategory = newValue!;
@@ -480,9 +482,14 @@ class _SubmitContentState extends State<SubmitContent> {
                                     newValue != 'Other') {
                                   final selectedCat = _categories.firstWhere(
                                     (cat) => cat['name'] == newValue,
-                                    orElse: () => {},
+                                    orElse: () => {
+                                      'id': ''
+                                    }, // Return empty map instead of {}
                                   );
                                   _selectedCategoryId = selectedCat['id'];
+                                } else if (newValue == 'Other') {
+                                  _selectedCategoryId =
+                                      'other'; // Assign a special ID for "Other"
                                 } else {
                                   _selectedCategoryId = null;
                                 }
@@ -878,6 +885,7 @@ class _SubmitContentState extends State<SubmitContent> {
   }
 
   Future<void> _submitComplaint() async {
+    // Validation checks
     if (_selectedCategory == 'Select a Category') {
       _showSnackBar('Please select a category', context);
       return;
@@ -903,12 +911,25 @@ class _SubmitContentState extends State<SubmitContent> {
     try {
       String complaintId =
           FirebaseFirestore.instance.collection('complaints').doc().id;
-// 🔥 Show loading message while AI analyzes
+
+      // 🔥 Show loading message while AI analyzes
       String suggestedPriority = await AIService.getPriority(
         description: _descriptionController.text.trim(),
         category: _selectedCategory,
         imageUrls: _selectedImageUrls,
       );
+
+      // Prepare category data with null safety
+      String categoryId;
+      String categoryName;
+
+      if (_selectedCategory == 'Other') {
+        categoryId = 'other'; // Use 'other' as ID for Other category
+        categoryName = 'Other';
+      } else {
+        categoryId = _selectedCategoryId ?? ''; // Use empty string if null
+        categoryName = _selectedCategory;
+      }
 
       await FirebaseFirestore.instance
           .collection('complaints')
@@ -926,29 +947,30 @@ class _SubmitContentState extends State<SubmitContent> {
         'createdAt': FieldValue.serverTimestamp(),
         'citizenId': _currentUser!.uid,
         'citizenEmail': _currentUser!.email,
-        'categoryId': _selectedCategoryId ?? '',
-        'categoryName':
-            _selectedCategory == 'Other' ? 'Other' : _selectedCategory,
+        'categoryId': categoryId, // Safe to use now
+        'categoryName': categoryName,
         'departmentId': '',
+        'departmentName': '', // Add this field to avoid null issues
         'upvoteCount': 0,
         'commentCount': 0,
       });
 
+      // 🔥 Add Pending timeline event
+      await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(complaintId)
+          .collection('timeline')
+          .add({
+        'status': 'Pending',
+        'timestamp': FieldValue.serverTimestamp(),
+        'message': 'Complaint submitted',
+        'updatedBy': _currentUser!.uid,
+      });
 
-// 🔥 Add Pending timeline event
-await FirebaseFirestore.instance
-    .collection('complaints')
-    .doc(complaintId)
-    .collection('timeline')
-    .add({
-  'status': 'Pending',
-  'timestamp': FieldValue.serverTimestamp(),
-  'message': 'Complaint submitted',
-  'updatedBy': _currentUser!.uid,
-});
       _showSnackBar(
           '✅ Complaint submitted! Priority: $suggestedPriority', context);
 
+      // Reset form after successful submission
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           setState(() {
@@ -961,6 +983,9 @@ await FirebaseFirestore.instance
             _selectedImageUrls.clear();
             _isSubmitting = false;
           });
+
+          // Navigate back or show success dialog
+          Navigator.pop(context);
         }
       });
     } catch (e) {

@@ -125,24 +125,17 @@ class AIService {
     ]
   };
 
+  // FIXED: Added 'Other' category with proper weights
   static final Map<String, Map<String, int>> _categoryWeights = {
     'Emergency': {'High': 20, 'Medium': 0, 'Low': 0},
     'Safety': {'High': 15, 'Medium': 5, 'Low': 0},
     'Infrastructure': {'High': 5, 'Medium': 10, 'Low': 2},
     'Roads': {'High': 8, 'Medium': 8, 'Low': 1},
-    'Water & Drainage': {
-      'High': 0,
-      'Medium': 12,
-      'Low': 3
-    }, // Fixed: No HIGH for water
-    'Waste Management': {
-      'High': 0,
-      'Medium': 10,
-      'Low': 5
-    }, // Fixed: No HIGH for waste
+    'Water & Drainage': {'High': 0, 'Medium': 12, 'Low': 3},
+    'Waste Management': {'High': 0, 'Medium': 10, 'Low': 5},
     'Electricity': {'High': 10, 'Medium': 6, 'Low': 1},
     'Public Health': {'High': 15, 'Medium': 5, 'Low': 0},
-    'Other': {'High': 0, 'Medium': 5, 'Low': 5},
+    'Other': {'High': 0, 'Medium': 5, 'Low': 5}, // ADDED THIS LINE
   };
 
   // ==================== MAIN FUNCTION - Keyword First, AI Fallback ====================
@@ -151,48 +144,58 @@ class AIService {
     required String category,
     required List<String> imageUrls,
   }) async {
-    // STEP 1: Try keyword matching first (fast and free)
-    final keywordResult = _getKeywordPriority(description, category);
+    try {
+      // STEP 1: Try keyword matching first (fast and free)
+      final keywordResult = _getKeywordPriority(description, category);
 
-    // STEP 2: If keywords found a clear match, return it immediately
-    if (keywordResult != null) {
-      return keywordResult;
+      // STEP 2: If keywords found a clear match, return it immediately
+      if (keywordResult != null) {
+        return keywordResult;
+      }
+
+      // STEP 3: No keyword match found - use AI as fallback
+      final aiPriority = await _getAIPriority(description, category, imageUrls);
+      if (aiPriority.isNotEmpty) {
+        return aiPriority;
+      }
+
+      // STEP 4: Ultimate fallback
+      return 'Medium';
+    } catch (e) {
+      print('Error in AIService.getPriority: $e');
+      return 'Medium'; // Safe fallback
     }
-
-    // STEP 3: No keyword match found - use AI as fallback
-    final aiPriority = await _getAIPriority(description, category, imageUrls);
-    if (aiPriority.isNotEmpty) {
-      return aiPriority;
-    }
-
-    // STEP 4: Ultimate fallback
-    return 'Medium';
   }
 
   // ==================== KEYWORD PRIORITY (Primary) ====================
   static String? _getKeywordPriority(String description, String category) {
-    final ruleScore = _calculateRuleBasedScore(description, category);
+    try {
+      final ruleScore = _calculateRuleBasedScore(description, category);
 
-    // Calculate total score
-    int highScore = ruleScore['High'] ?? 0;
-    int mediumScore = ruleScore['Medium'] ?? 0;
-    int lowScore = ruleScore['Low'] ?? 0;
+      // Calculate total score
+      int highScore = ruleScore['High'] ?? 0;
+      int mediumScore = ruleScore['Medium'] ?? 0;
+      int lowScore = ruleScore['Low'] ?? 0;
 
-    // If any score is significantly higher, return it
-    if (highScore > mediumScore && highScore > lowScore && highScore >= 5) {
-      return 'High';
-    }
-    if (lowScore > highScore && lowScore > mediumScore && lowScore >= 3) {
-      return 'Low';
-    }
-    if (mediumScore > 0 &&
-        mediumScore >= highScore &&
-        mediumScore >= lowScore) {
-      return 'Medium';
-    }
+      // If any score is significantly higher, return it
+      if (highScore > mediumScore && highScore > lowScore && highScore >= 5) {
+        return 'High';
+      }
+      if (lowScore > highScore && lowScore > mediumScore && lowScore >= 3) {
+        return 'Low';
+      }
+      if (mediumScore > 0 &&
+          mediumScore >= highScore &&
+          mediumScore >= lowScore) {
+        return 'Medium';
+      }
 
-    // No clear keyword match
-    return null;
+      // No clear keyword match
+      return null;
+    } catch (e) {
+      print('Error in _getKeywordPriority: $e');
+      return null;
+    }
   }
 
   // ==================== IMAGE ANALYSIS ====================
@@ -269,7 +272,7 @@ Return ONLY JSON: {"priority": "High", "confidence": 90}
         }
       }
     } catch (e) {
-      // Silent fail
+      print('Error in _analyzeImages: $e');
     }
 
     return imageScores;
@@ -284,6 +287,7 @@ Return ONLY JSON: {"priority": "High", "confidence": 90}
       }
       return '';
     } catch (e) {
+      print('Error downloading image: $e');
       return '';
     }
   }
@@ -291,41 +295,58 @@ Return ONLY JSON: {"priority": "High", "confidence": 90}
   // ==================== RULE-BASED SCORING ====================
   static Map<String, int> _calculateRuleBasedScore(
       String description, String category) {
-    final text = description.toLowerCase();
-    Map<String, int> scores = {'High': 0, 'Medium': 0, 'LOW': 0};
+    try {
+      final text = description.toLowerCase();
+      Map<String, int> scores = {'High': 0, 'Medium': 0, 'Low': 0};
 
-    // Score from keywords
-    for (var level in _advancedTraining.keys) {
-      for (var rule in _advancedTraining[level]!) {
-        for (var keyword in rule['keywords'] as List<String>) {
-          if (text.contains(keyword)) {
-            scores[level] = scores[level]! + (rule['weight'] as int);
+      // Score from keywords
+      for (var level in _advancedTraining.keys) {
+        final rules = _advancedTraining[level];
+        if (rules != null) {
+          for (var rule in rules) {
+            final keywords = rule['keywords'] as List<String>?;
+            if (keywords != null) {
+              for (var keyword in keywords) {
+                if (text.contains(keyword)) {
+                  final weight = rule['weight'] as int? ?? 0;
+                  scores[level] = (scores[level] ?? 0) + weight;
+                }
+              }
+            }
           }
         }
       }
-    }
 
-    // Score from category
-    final categoryWeight = _categoryWeights[category];
-    if (categoryWeight != null) {
-      scores['High'] = scores['High']! + (categoryWeight['High'] ?? 0);
-      scores['Medium'] = scores['Medium']! + (categoryWeight['Medium'] ?? 0);
-      scores['Low'] = scores['Low']! + (categoryWeight['Low'] ?? 0);
-    }
-
-    // 🔥 Special rule: Water quality should NOT be HIGH
-    if (text.contains('water') &&
-        (text.contains('not clean') ||
-            text.contains('dirty') ||
-            text.contains('contaminated') ||
-            text.contains('smelly'))) {
-      if (scores['High']! > 0) {
-        scores['Medium'] = scores['Medium']! + scores['High']!;
-        scores['High'] = 0;
+      // Score from category - WITH NULL SAFETY
+      final categoryWeight = _categoryWeights[category];
+      if (categoryWeight != null) {
+        scores['High'] = (scores['High'] ?? 0) + (categoryWeight['High'] ?? 0);
+        scores['Medium'] =
+            (scores['Medium'] ?? 0) + (categoryWeight['Medium'] ?? 0);
+        scores['Low'] = (scores['Low'] ?? 0) + (categoryWeight['Low'] ?? 0);
+      } else {
+        // Default weights for unknown categories
+        scores['Medium'] = (scores['Medium'] ?? 0) + 5;
+        scores['Low'] = (scores['Low'] ?? 0) + 5;
       }
-    }
 
-    return scores;
+      // 🔥 Special rule: Water quality should NOT be HIGH
+      if (text.contains('water') &&
+          (text.contains('not clean') ||
+              text.contains('dirty') ||
+              text.contains('contaminated') ||
+              text.contains('smelly'))) {
+        if ((scores['High'] ?? 0) > 0) {
+          scores['Medium'] = (scores['Medium'] ?? 0) + (scores['High'] ?? 0);
+          scores['High'] = 0;
+        }
+      }
+
+      return scores;
+    } catch (e) {
+      print('Error in _calculateRuleBasedScore: $e');
+      return {'High': 0, 'Medium': 5, 'Low': 5}; // Safe fallback
+    }
   }
 
   // ==================== AI VERIFICATION (Fallback only) ====================
@@ -385,6 +406,7 @@ Return ONLY ONE WORD: High, Medium, or Low
 
       return '';
     } catch (e) {
+      print('Error in _getAIPriority: $e');
       return '';
     }
   }
