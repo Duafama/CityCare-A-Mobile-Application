@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeocodingService {
-  static const String _apiKey = "YOUR_API_KEY_HERE";  // 👈 WOHI GOOGLE MAPS API KEY
+  static const String _apiKey = "YOUR_API_KEY_HERE";  
 
   // Coordinates se address dhundho
   static Future<String> getAddressFromLatLng(double lat, double lng) async {
