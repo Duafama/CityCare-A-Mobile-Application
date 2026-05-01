@@ -29,6 +29,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
         centerTitle: true,
         backgroundColor: primaryBlue,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 1,
+            color: Colors.white.withOpacity(0.1),
+          ),
+        ),
       ),
 
       /// ---------------- Drawer ----------------
@@ -38,6 +46,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('complaints').snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Error loading data",
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            );
+          }
+
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -57,83 +85,206 @@ class _AdminDashboardState extends State<AdminDashboard> {
             final data = doc.data() as Map<String, dynamic>;
 
             final status = data['status'] ?? '';
-            final dept = data['departmentName'] ?? 'Unknown';
+            String dept = data['departmentName'] ?? '';
 
-            /// Count status
-            if (status == "Pending") pending++;
-            if (status == "Approved") approved++;
-            if (status == "InProgress") inProgress++;
-            if (status == "Resolved") resolved++;
+            // Clean up department name
+            if (dept.trim().isEmpty || dept == "null" || dept == "Unknown") {
+              dept = "Not Assigned";
+            }
 
-            /// Count departments
-            deptCounts[dept] = (deptCounts[dept] ?? 0) + 1;
+            /// Count status (case-insensitive for safety)
+            final statusLower = status.toLowerCase();
+            if (statusLower == "pending")
+              pending++;
+            else if (statusLower == "approved")
+              approved++;
+            else if (statusLower == "inprogress" ||
+                statusLower == "in progress")
+              inProgress++;
+            else if (statusLower == "resolved") resolved++;
+
+            /// Count departments (skip empty)
+            if (dept.isNotEmpty) {
+              deptCounts[dept] = (deptCounts[dept] ?? 0) + 1;
+            }
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// ---- Overview ----
-                const Text(
-                  "Overview",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: primaryBlue,
+          // Sort departments alphabetically
+          final sortedDepts = deptCounts.entries.toList()
+            ..sort((a, b) => a.key.compareTo(b.key));
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {});
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// ---- Overview Section ----
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.dashboard,
+                            color: primaryBlue,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          "Overview",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-                GridView.count(
-                  shrinkWrap: true,
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    DashboardCard(
-                      title: "Pending",
-                      count: pending.toString(),
-                      color: const Color(0xFFFFA726),
-                    ),
-                    DashboardCard(
-                      title: "Approved",
-                      count: approved.toString(),
-                      color: const Color(0xFF43A047),
-                    ),
-                    DashboardCard(
-                      title: "In Progress",
-                      count: inProgress.toString(),
-                      color: const Color(0xFF1E88E5),
-                    ),
-                    DashboardCard(
-                      title: "Resolved",
-                      count: resolved.toString(),
-                      color: const Color(0xFF00897B),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 28),
-
-                /// ---- Departments ----
-                const Text(
-                  "Department Summary",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: primaryBlue,
+                  GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      DashboardCard(
+                        title: "Pending",
+                        count: pending.toString(),
+                        color: const Color(0xFFFFA726),
+                        icon: Icons.pending_actions,
+                      ),
+                      DashboardCard(
+                        title: "Approved",
+                        count: approved.toString(),
+                        color: const Color(0xFF43A047),
+                        icon: Icons.check_circle,
+                      ),
+                      DashboardCard(
+                        title: "In Progress",
+                        count: inProgress.toString(),
+                        color: const Color(0xFF1E88E5),
+                        icon: Icons.engineering,
+                      ),
+                      DashboardCard(
+                        title: "Resolved",
+                        count: resolved.toString(),
+                        color: const Color(0xFF00897B),
+                        icon: Icons.done_all,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
 
-                Column(
-                  children: deptCounts.entries.map((entry) {
-                    return departmentTile(entry.key, entry.value);
-                  }).toList(),
-                ),
-              ],
+                  const SizedBox(height: 32),
+
+                  /// ---- Departments Section ----
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.business,
+                          color: primaryBlue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          "Department Summary",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: primaryBlue,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.list_alt,
+                              size: 14,
+                              color: primaryBlue,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              "${docs.length}",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: primaryBlue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (sortedDepts.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(40),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.business_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "No departments found",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: sortedDepts.length,
+                      itemBuilder: (context, index) {
+                        final entry = sortedDepts[index];
+                        return departmentTile(entry.key, entry.value);
+                      },
+                    ),
+                ],
+              ),
             ),
           );
         },
@@ -151,20 +302,40 @@ class _AdminDashboardState extends State<AdminDashboard> {
       margin: const EdgeInsets.symmetric(vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: primaryBlue.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Icon(Icons.apartment, color: primaryBlue),
+          child: Icon(
+            name == "Not Assigned" ? Icons.help_outline : Icons.apartment,
+            color: primaryBlue,
+            size: 20,
+          ),
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(
+          name,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
         trailing: Container(
+          constraints: const BoxConstraints(minWidth: 40),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: primaryBlue,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                primaryBlue,
+                primaryBlue.withOpacity(0.8),
+              ],
+            ),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -172,7 +343,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
+              fontSize: 14,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -185,50 +358,79 @@ class DashboardCard extends StatelessWidget {
   final String title;
   final String count;
   final Color color;
+  final IconData icon;
 
   const DashboardCard({
     super.key,
     required this.title,
     required this.count,
     required this.color,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: color,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color,
+            color.withOpacity(0.8),
+          ],
+        ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: color.withOpacity(0.3),
-            blurRadius: 6,
+            blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            count,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {},
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  count,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
