@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../services/notification_service.dart'; // ✅ Ye hona chahiye
+import '../../../services/notification_service.dart';
 
 import '../../../services/departmentComplaintService.dart';
 
@@ -29,7 +29,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   final GlobalKey _categoryButtonKey = GlobalKey();
 
-// Helper function to format time in 12-hour format
+  // Helper function to format time in 12-hour format
   String _formatTime12Hour(DateTime time) {
     int hour = time.hour;
     int minute = time.minute;
@@ -77,7 +77,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       String? deptName = complaintData['departmentName'];
       String? deptId = complaintData['departmentId'];
       String? categoryName = complaintData['categoryName'];
-      // ✅ HANDLE "OTHER" SAFELY
       final isOther = categoryName == null || categoryName == "Other";
 
       if (!isOther &&
@@ -103,11 +102,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
       setState(() {
         data = complaintData;
-
         selectedCategory = categoryName ?? "Other";
         selectedDept = deptName;
         selectedDeptId = deptId;
-
         loading = false;
       });
     } catch (e) {
@@ -116,21 +113,19 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     }
   }
 
-// load timeline
+  // load timeline
   Future<void> _loadTimeline() async {
     try {
       final snap = await FirebaseFirestore.instance
           .collection('complaints')
           .doc(docId)
-          .collection('timeline') // ✅ subcollection
-          .orderBy('timestamp') // optional but recommended
+          .collection('timeline')
+          .orderBy('timestamp')
           .get();
 
       setState(() {
         timeline = snap.docs.map((doc) => doc.data()).toList();
       });
-
-      print("TIMELINE LOADED: $timeline");
     } catch (e) {
       print("TIMELINE ERROR: $e");
     }
@@ -150,7 +145,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   Future<void> _loadCategories() async {
     final snap = await FirebaseFirestore.instance
         .collection('categories')
-        .where('status', isEqualTo: 'active') // ✅ FIXED
+        .where('status', isEqualTo: 'active')
         .get();
 
     setState(() {
@@ -184,7 +179,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       "departmentId": selectedDeptId ?? data!['departmentId'],
       "departmentName": selectedDept ?? data!['departmentName'],
     });
-    // 🔥 SEND NOTIFICATION TO CITIZEN
+
     await NotificationService.notifyStatusChange(
       userId: citizenId,
       complaintId: docId!,
@@ -192,8 +187,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       oldStatus: oldStatus,
       newStatus: status,
     );
+
     setState(() => data!['status'] = status);
-    // 🔥 SHOW SNACKBAR CONFIRMATION
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Status updated to $status and citizen notified'),
@@ -201,6 +197,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+
+    // Reload timeline after status update
+    _loadTimeline();
   }
 
   // ===================== UPDATE CATEGORY (AUTO DEPT) =====================
@@ -232,10 +231,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     setState(() {
       selectedCategory = categoryName;
       selectedCategoryId = categoryId;
-
       selectedDept = deptName;
       selectedDeptId = deptId;
-
       data!['categoryName'] = categoryName;
       data!['categoryId'] = categoryId;
       data!['departmentName'] = deptName;
@@ -258,10 +255,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-
               final isInvalidCategory =
                   selectedCategory == null || selectedCategory == "Other";
-
               if (isInvalidCategory) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -270,7 +265,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 );
                 return;
               }
-
               _updateStatus(action);
             },
             child: Text(action),
@@ -337,10 +331,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
         String categoryName = category['name'] as String;
         return PopupMenuItem<String>(
           value: categoryName,
-          padding: EdgeInsets.zero, // Remove default padding
+          padding: EdgeInsets.zero,
           child: Container(
             constraints: BoxConstraints(
-              maxWidth: screenSize.width - 48, // Limit width
+              maxWidth: screenSize.width - 48,
               minWidth: 200,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -352,10 +346,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   child: Text(
                     categoryName,
                     style: const TextStyle(fontSize: 14),
-                    overflow:
-                        TextOverflow.ellipsis, // Add ellipsis for long text
-                    maxLines: 1, // Force single line
-                    softWrap: false, // Prevent wrapping
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    softWrap: false,
                   ),
                 ),
               ],
@@ -396,8 +389,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     timeline.sort((a, b) {
       final t1 = (a['timestamp'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
       final t2 = (b['timestamp'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-      return t1.compareTo(t2); // oldest → newest
+      return t1.compareTo(t2);
     });
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
       appBar: AppBar(
@@ -426,7 +420,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                               _updateCategory(value);
                             },
                             constraints: BoxConstraints(
-                              maxHeight: 400, // Maximum height before scrolling
+                              maxHeight: 400,
                               maxWidth: 300,
                             ),
                             itemBuilder: (context) {
@@ -515,6 +509,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                             ),
                           ),
                   ),
+
                   // ================= AUTO UPDATED DEPARTMENT =================
                   _card(
                     title: "Department",
@@ -574,7 +569,6 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
                   // ================= FIXED TIMELINE WITH HORIZONTAL SCROLL =================
                   if (timeline.isNotEmpty) ...[
-                    const SizedBox(height: 20),
                     const Text(
                       "Timeline",
                       style:
@@ -582,97 +576,108 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Horizontal scrolling timeline
-                    SizedBox(
-                      height: 120, // Fixed height for horizontal scroll
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: timeline.length,
-                        itemBuilder: (context, index) {
-                          final event = timeline[index];
-                          final status = event['status'] ?? '';
+                    // Wrap in a Container with fixed height and width constraints
+                    Container(
+                      height: 130,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Calculate if we need scrolling based on content width
+                          double totalWidth = timeline.length *
+                              130.0; // 100px for card + 30px for line
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Row(
+                              children: List.generate(timeline.length, (index) {
+                                final event = timeline[index];
+                                final status = event['status'] ?? '';
 
-                          DateTime? time;
-                          if (event['timestamp'] is Timestamp) {
-                            time = (event['timestamp'] as Timestamp).toDate();
-                          }
+                                DateTime? time;
+                                if (event['timestamp'] is Timestamp) {
+                                  time = (event['timestamp'] as Timestamp)
+                                      .toDate();
+                                }
 
-                          final isLast = index == timeline.length - 1;
+                                final isLast = index == timeline.length - 1;
 
-                          return Row(
-                            children: [
-                              Container(
-                                width:
-                                    100, // Fixed width for each timeline item
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                return Row(
                                   children: [
-                                    // ICON CIRCLE
-                                    CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: _statusColor(status),
-                                      child: Icon(
-                                        _statusIcon(status),
-                                        size: 20,
-                                        color: Colors.white,
+                                    // Timeline item
+                                    SizedBox(
+                                      width: 100,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+                                        children: [
+                                          // ICON CIRCLE
+                                          CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor:
+                                                _statusColor(status),
+                                            child: Icon(
+                                              _statusIcon(status),
+                                              size: 22,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          // STATUS
+                                          Text(
+                                            status,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          // DATE
+                                          Text(
+                                            time != null
+                                                ? "${time.day.toString().padLeft(2, '0')}-"
+                                                    "${time.month.toString().padLeft(2, '0')}-"
+                                                    "${time.year}"
+                                                : '',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          // TIME in 12-hour format
+                                          Text(
+                                            time != null
+                                                ? _formatTime12Hour(time)
+                                                : '',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    // STATUS
-                                    Text(
-                                      status,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                    // CONNECTING LINE
+                                    if (!isLast)
+                                      Container(
+                                        width: 30,
+                                        height: 2,
+                                        color: Colors.grey.shade300,
                                       ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // DATE
-                                    Text(
-                                      time != null
-                                          ? "${time.day.toString().padLeft(2, '0')}-"
-                                              "${time.month.toString().padLeft(2, '0')}-"
-                                              "${time.year}"
-                                          : '',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    // TIME in 12-hour format
-                                    Text(
-                                      time != null
-                                          ? _formatTime12Hour(time)
-                                          : '',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
                                   ],
-                                ),
-                              ),
-                              // CONNECTING LINE
-                              if (!isLast)
-                                Container(
-                                  width: 30,
-                                  height: 2,
-                                  color: Colors.grey.shade300,
-                                ),
-                            ],
+                                );
+                              }),
+                            ),
                           );
                         },
                       ),
                     ),
-                    const SizedBox(height: 20),
                   ],
 
-                  // Add extra bottom padding for better scrolling experience
                   const SizedBox(height: 20),
                 ],
               ),
@@ -792,6 +797,8 @@ IconData _statusIcon(String status) {
       return Icons.hourglass_empty;
     case "Approved":
       return Icons.check_circle;
+    case "InProgress":
+      return Icons.build;
     case "In-Progress":
       return Icons.build;
     case "Resolved":
@@ -804,11 +811,13 @@ IconData _statusIcon(String status) {
 Color _statusColor(String status) {
   switch (status) {
     case "Pending":
-      return Colors.grey;
+      return Colors.orange;
     case "Approved":
       return Colors.blue;
+    case "InProgress":
+      return Colors.grey;
     case "In-Progress":
-      return Colors.orange;
+      return Colors.grey;
     case "Resolved":
       return Colors.green;
     default:

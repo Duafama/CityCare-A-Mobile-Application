@@ -235,42 +235,39 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Section Header
-                  Container(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.grey.shade200,
-                          width: 1.5,
+                  // Section Header - Fixed for overflow
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.business,
+                          color: primaryBlue,
+                          size: 20,
                         ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: primaryBlue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.business,
-                            color: primaryBlue,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
                           "Department Information",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: primaryBlue,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                  const Divider(
+                    thickness: 1.5,
+                    color: Colors.grey,
                   ),
                   const SizedBox(height: 20),
 
@@ -399,16 +396,21 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        "Department Officers",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0A1F44),
+                      const Expanded(
+                        child: Text(
+                          "Department Officers",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0A1F44),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
                   ),
+                  const Divider(),
                   const SizedBox(height: 16),
                   StreamBuilder<QuerySnapshot>(
                     stream: _firestore
@@ -530,16 +532,21 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        "Department Users",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0A1F44),
+                      const Expanded(
+                        child: Text(
+                          "Department Users",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0A1F44),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
                   ),
+                  const Divider(),
                   const SizedBox(height: 16),
                   StreamBuilder<QuerySnapshot>(
                     stream: _firestore
@@ -661,16 +668,21 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        "Categories",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0A1F44),
+                      const Expanded(
+                        child: Text(
+                          "Categories",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0A1F44),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
                   ),
+                  const Divider(),
                   const SizedBox(height: 16),
                   StreamBuilder<QuerySnapshot>(
                     stream: _firestore
