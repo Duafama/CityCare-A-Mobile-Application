@@ -78,7 +78,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           int inProgress = 0;
           int resolved = 0;
 
-          /// 🔥 DEPARTMENT COUNTS
+          /// 🔥 DEPARTMENT COUNTS - Only for approved, in-progress, and resolved complaints
           Map<String, int> deptCounts = {};
 
           for (var doc in docs) {
@@ -103,8 +103,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
               inProgress++;
             else if (statusLower == "resolved") resolved++;
 
-            /// Count departments (skip empty)
-            if (dept.isNotEmpty) {
+            /// Count departments ONLY for complaints that are NOT pending and NOT rejected
+            /// This includes: Approved, InProgress, Resolved
+            final shouldCountDepartment = statusLower != "pending" &&
+                statusLower != "rejected" &&
+                dept.isNotEmpty;
+
+            if (shouldCountDepartment) {
               deptCounts[dept] = (deptCounts[dept] ?? 0) + 1;
             }
           }
@@ -228,15 +233,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.list_alt,
+                              Icons.business_center,
                               size: 14,
                               color: primaryBlue,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              "${docs.length}",
+                              "${sortedDepts.length} depts",
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: primaryBlue,
                               ),
@@ -246,7 +251,38 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+
+                  /// Info note about department counting
+                  Container(
+                    margin: const EdgeInsets.only(top: 8, bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: Colors.blue.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Showing department assignments for Approved, In Progress, and Resolved complaints only. Pending and Rejected complaints are not assigned to departments.",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
 
                   if (sortedDepts.isEmpty)
                     Container(
@@ -264,10 +300,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "No departments found",
+                            "No department assignments yet",
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Departments appear when complaints are approved",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
                             ),
                           ),
                         ],

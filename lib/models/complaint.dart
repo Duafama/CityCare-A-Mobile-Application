@@ -4,27 +4,20 @@ class Complaint {
   String complaintId;
   String citizenId;
   String citizenEmail;
-
   String categoryId;
   String categoryName;
-
   String description;
-
   double latitude;
   double longitude;
   String location;
-
   String priority;
   String status;
-
   String? departmentId;
-
+  String? departmentName;
   List<String> beforeImages;
   List<String> afterImages;
-
   int commentCount;
   int upvoteCount;
-
   DateTime? createdAt;
   DateTime? updatedAt;
 
@@ -41,6 +34,7 @@ class Complaint {
     required this.priority,
     required this.status,
     this.departmentId,
+    this.departmentName,
     this.beforeImages = const [],
     this.afterImages = const [],
     required this.commentCount,
@@ -62,6 +56,7 @@ class Complaint {
       "priority": priority,
       "status": status,
       "departmentId": departmentId,
+      "departmentName": departmentName,
       "beforeImages": beforeImages,
       "afterImages": afterImages,
       "commentCount": commentCount,
@@ -85,6 +80,7 @@ class Complaint {
       priority: map["priority"] ?? "Medium",
       status: map["status"] ?? "Pending",
       departmentId: map["departmentId"],
+      departmentName: map["departmentName"],
       beforeImages: List<String>.from(map["beforeImages"] ?? []),
       afterImages: List<String>.from(map["afterImages"] ?? []),
       commentCount: map["commentCount"] ?? 0,
@@ -94,3 +90,4 @@ class Complaint {
     );
   }
 }
+// STOP HERE - NOTHING AFTER THIS
