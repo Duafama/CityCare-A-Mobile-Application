@@ -94,7 +94,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _phoneError = 'Phone number must be at least 10 digits';
       } else if (value.length > 11) {
         _phoneError = 'Phone number cannot exceed 11 digits';
-      } else {
+      } 
+    //   else if (value.length == 12 && value.startsWith('92')) {
+    //   // ✅ 92XXXXXXXXXX format (12 digits, starts with 92)
+    //   _phoneError = null;
+    // }
+      else {
         _phoneError = null;
       }
     });
@@ -178,7 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // 🔴 STEP 2: PAYMENT SUCCESSFUL - CREATE USER (YOUR EXISTING CODE)
+      // 🔴 STEP 2: PAYMENT SUCCESSFUL - CREATE USER 
       final result = await AuthService().registerWithEmail(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
@@ -186,7 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phoneController.text.trim(),
         paymentMethod: _selectedPaymentMethod!,
         registrationFee: 500.0,
-        profileImageUrl: '', // 👈 YEH PASS KARO (OPTIONAL)
+        profileImageUrl: '', 
       );
 
       if (result['success'] == true && mounted) {
@@ -255,7 +260,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
-  void dispose() {
+  void dispose() {  //used for memory clean (remove garbage values)
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();

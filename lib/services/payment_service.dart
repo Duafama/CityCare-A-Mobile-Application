@@ -110,7 +110,7 @@ class PaymentService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        print('❌ Payment intent creation failed: ${response.body}');
+        print('❌ Payment intent creation failed: ${response.body}'); //maintaining session
         return null;
       }
     } catch (e) {

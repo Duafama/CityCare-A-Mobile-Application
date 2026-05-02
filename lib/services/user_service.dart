@@ -32,9 +32,9 @@ class UserService {
         'registrationFee': registrationFee,
         'userType': departmentId == null
             ? 'citizen'
-            : 'department_officer', // 🔥 Auto-detect
+            : 'department_officer', //  Auto-detect
         'departmentId':
-            departmentId, // 🔥 NEW: null for citizens, ID for officers
+            departmentId, //  null for citizens, ID for officers
         'isActive': departmentId == null ? true : false,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -87,7 +87,7 @@ class UserService {
     }
   }
 
-  //// Profile image update karne ka method
+  // Profile image update karne ka method
   Future<String?> updateProfileImage(String uid, String imageUrl) async {
     try {
       await _firestore.collection('users').doc(uid).update({

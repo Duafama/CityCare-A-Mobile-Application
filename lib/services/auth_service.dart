@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // ADD THIS
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance; 
   final UserService _userService = UserService();
 
   // Singleton pattern

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:city_care/services/user_service.dart';
 import 'package:city_care/services/cloudinary_service.dart';
 
@@ -28,7 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   
   // Store original values for comparison
   String _originalName = '';
-  String _originalEmail = ''; // 👈 ADDED
+  String _originalEmail = ''; 
   String _originalPhone = '';
   String _originalUsername = '';
 
@@ -50,7 +49,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       
       if (userData != null && mounted) {
         _originalName = userData['name'] ?? '';
-        _originalEmail = userData['email'] ?? _currentUser?.email ?? ''; // 👈 ADDED
+        _originalEmail = userData['email'] ?? _currentUser?.email ?? ''; 
         _originalPhone = userData['phone'] ?? '';
         _originalUsername = userData['username'] ?? 
             userData['name']?.toString().replaceAll(' ', '_').toLowerCase() ?? 
@@ -58,7 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         
         setState(() {
           _nameController.text = _originalName;
-          _emailController.text = _originalEmail; // 👈 UPDATED
+          _emailController.text = _originalEmail;
           _phoneController.text = _originalPhone;
           _usernameController.text = _originalUsername;
           _profileImageUrl = userData['profileImageUrl'];
@@ -124,7 +123,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       Map<String, dynamic> updates = {};
-      bool emailChanged = false; // 👈 ADDED
+      bool emailChanged = false;
       
       // Check what changed
       if (_nameController.text.trim() != _originalName) {
@@ -161,7 +160,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         
         // Update original values
         _originalName = _nameController.text.trim();
-        _originalEmail = _emailController.text.trim(); // 👈 ADDED
+        _originalEmail = _emailController.text.trim(); 
         _originalPhone = _phoneController.text.trim();
         _originalUsername = _usernameController.text.trim();
       }

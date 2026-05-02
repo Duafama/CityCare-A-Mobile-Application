@@ -7,7 +7,6 @@ import 'submit_screen.dart';
 import 'comments_screen.dart';
 import 'my_complaints_screen.dart';
 import 'profile.dart';
-import '../models/complaint_enums.dart';
 import 'dart:async'; 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -31,7 +30,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _listenToNotificationCount();  // 🔥 REPLACED _fetchNotificationCount
+    _listenToNotificationCount(); 
     _loadUserUpvotedComplaints();
   }
 

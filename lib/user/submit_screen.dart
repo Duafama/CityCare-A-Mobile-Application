@@ -10,7 +10,7 @@ import 'my_complaints_screen.dart';
 import 'profile.dart';
 import 'dashboard_screen.dart';
 // import 'package:city_care/services/geocoding_service.dart';
-import 'package:geocoding/geocoding.dart'; // Top par import ka
+import 'package:geocoding/geocoding.dart'; 
 
 import '../services/ai_priority_service.dart';
 
@@ -22,7 +22,7 @@ class SubmitScreen extends StatefulWidget {
 }
 
 class _SubmitScreenState extends State<SubmitScreen> {
-  final User? _currentUser = FirebaseAuth.instance.currentUser;
+  // final User? _currentUser = FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +151,7 @@ class _SubmitContentState extends State<SubmitContent> {
         _locationController.text = 'Getting address...'; // Loading message
       });
 
-      // 🔥 Get address from coordinates (FREE)
+      // 🔥 Get address from coordinates 
       final address = await _getAddressFromLatLng(latLng);
 
       setState(() {
@@ -473,7 +473,7 @@ class _SubmitContentState extends State<SubmitContent> {
                                 ),
                               ),
                             ],
-                            // Replace the DropdownButton onChanged handler with this:
+                            
 
                             onChanged: (String? newValue) {
                               setState(() {
@@ -588,8 +588,8 @@ class _SubmitContentState extends State<SubmitContent> {
 
                 // 🔍 AI Duplication Detection - TO BE IMPLEMENTED
                 // ⚡ AI Priority Suggestion - TO BE IMPLEMENTED
-// Add this button temporarily in your submit_screen.dart build method
-// Just for testing, add it above the submit button
+                // Add this button temporarily in your submit_screen.dart build method
+                // Just for testing, add it above the submit button
 
                 Container(
                   width: double.infinity,
