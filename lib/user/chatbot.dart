@@ -310,7 +310,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     return '⏰ Complaint Resolution Timeline:\n\n• Pending: Reviewed within 24 hours\n• Approved: Department assigned in 2-3 days\n• In-Progress: Active work, takes 5-7 days\n• Resolved: Complaint closed\n\nTimeline depends on issue type and department workload. Check exact status in "My Complaints" section.';
   }
   
-  if (message.contains('rejected') || message.contains('why rejected') || message.contains('not approved')) {
+  if (message.contains('rejected') || message.contains('rejected') || message.contains('not approved')) {
     return '⚠️ Why was your complaint rejected?\n\nCommon reasons:\n• Incomplete or unclear description\n• Invalid or incorrect location\n• Duplicate complaint (already reported)\n• Against guidelines (fake/promotional)\n\nWhat to do:\n1. Go to "My Complaints"\n2. Tap on rejected complaint\n3. Click "Edit" to modify\n4. Add better description/photos\n5. Resubmit\n\n.';
   }
    // 🔥 YAHAN YEH ADD KARO (Comment deleted ke liye)
@@ -337,7 +337,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   // ============ DELAYED COMPLAINT STATUS ============
   if (message.contains('pending for long') || message.contains('still pending') || 
       message.contains('why not starting') || message.contains('no action yet') ||
-      message.contains('not working on my complaint') || message.contains('delayed complaint')) {
+      message.contains('not working on my complaint') ||message.contains('not progressed')|| message.contains('delayed complaint')) {
     return '⏳ **Why is your complaint still pending?**\n\nPossible reasons for delay:\n• High volume of complaints in your area\n• Waiting for department assignment\n• Need additional verification\n• Technical review in progress\n• Weekend/holiday delay\n\n**What you can do:**\n1. **Check details:** Go to My Complaints → View Details → Verify information is correct\n2. **Add more info:** Edit complaint to add better photos/description\n3. **Follow up:** Comment on your complaint asking for update\n4. **Contact support:** Email support@citycare.com with your complaint ID\n\n**Average resolution time:** 5-7 working days. Your complaint ID is important for tracking. We appreciate your patience! 🙏';
   }
   
