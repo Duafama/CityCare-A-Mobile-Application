@@ -45,6 +45,7 @@ class Complaint {
 
   Map<String, dynamic> toMap() {
     return {
+      "complaintId": complaintId,
       "citizenId": citizenId,
       "citizenEmail": citizenEmail,
       "categoryId": categoryId,

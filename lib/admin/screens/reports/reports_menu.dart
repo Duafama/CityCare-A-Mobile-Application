@@ -7,7 +7,6 @@ import 'admin_overall_report.dart';
 import 'department_report_screen.dart';
 import '../../../services/complaint_service.dart';
 
-
 class ReportsMenuScreen extends StatefulWidget {
   const ReportsMenuScreen({super.key});
 
@@ -20,6 +19,7 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
 
   List<Department> departments = [];
   Map<String, int> deptComplaintCounts = {}; // deptId → total complaints
+  int totalComplaintsCount = 0; // all complaints regardless of department
   bool isLoading = true;
 
   @override
@@ -38,14 +38,15 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
       final Map<String, int> counts = {};
       for (final c in allComplaints) {
         if (c.departmentId != null) {
-          counts[c.departmentId!] =
-              (counts[c.departmentId!] ?? 0) + 1;
+          counts[c.departmentId!] = (counts[c.departmentId!] ?? 0) + 1;
         }
       }
 
       setState(() {
         departments = depts;
         deptComplaintCounts = counts;
+        totalComplaintsCount =
+            allComplaints.length; // use raw list, not dept map
         isLoading = false;
       });
     } catch (e) {
@@ -58,25 +59,21 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
   Widget build(BuildContext context) {
     final totalDepts = departments.length;
     final totalComplaints =
-        deptComplaintCounts.values.fold(0, (a, b) => a + b);
+        totalComplaintsCount; // matches AdminOverallReportScreen
 
     return Scaffold(
       backgroundColor: kLightGrey,
-
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           "Reports",
-          style:
-              TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: kPrimaryBlue,
         elevation: 0,
       ),
-
       drawer: adminDrawer(context),
-
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -113,8 +110,7 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
                   // ── OVERALL REPORT ────────────────────────────
                   const SectionHeader(
                     title: "Overall Report",
-                    subtitle:
-                        "System-wide analytics across all departments",
+                    subtitle: "System-wide analytics across all departments",
                   ),
                   _ReportMenuCard(
                     title: "Overall Report",
@@ -127,8 +123,7 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              const AdminOverallReportScreen(),
+                          builder: (_) => const AdminOverallReportScreen(),
                         ),
                       );
                     },
@@ -149,20 +144,18 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
                         padding: const EdgeInsets.all(24),
                         child: Text(
                           "No departments found",
-                          style: TextStyle(
-                              color: Colors.grey[600], fontSize: 14),
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 14),
                         ),
                       ),
                     )
                   else
                     ...departments.map((dept) {
-                      final count =
-                          deptComplaintCounts[dept.id] ?? 0;
+                      final count = deptComplaintCounts[dept.id] ?? 0;
 
                       return _ReportMenuCard(
                         title: dept.name,
-                        subtitle:
-                            "$count complaint${count != 1 ? 's' : ''}",
+                        subtitle: "$count complaint${count != 1 ? 's' : ''}",
                         icon: Icons.apartment,
                         iconBg: kPrimaryBlue,
                         trailing: count > 0
@@ -186,7 +179,6 @@ class _ReportsMenuScreenState extends State<ReportsMenuScreen> {
                 ],
               ),
             ),
-
       bottomNavigationBar: adminBottomNav(context, _currentIndex),
     );
   }
@@ -255,16 +247,14 @@ class _ReportMenuCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.black45),
+                    style: const TextStyle(fontSize: 12, color: Colors.black45),
                   ),
                 ],
               ),
             ),
             trailing,
             const SizedBox(width: 6),
-            const Icon(Icons.chevron_right,
-                color: Colors.grey, size: 18),
+            const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
           ],
         ),
       ),
