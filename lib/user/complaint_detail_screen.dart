@@ -80,39 +80,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
                   ),
-                  child: Column(
-                    children: [
-                      Text('Complaint Status', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
-                      const SizedBox(height: 20),
-                      _buildColorfulTimeline(statusString),
-                      const SizedBox(height: 20),
-                      // REAL-TIME TIMELINE FROM SUBCOLLECTION
-                      _buildRealtimeTimeline(complaintId),
-                      const SizedBox(height: 20),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: statusColor.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(_getStatusIcon(statusString), color: statusColor, size: 28),
-                            const SizedBox(width: 12),
-                            Flexible(
-                              child: Text(
-                                'Current Status: ${status.value}',
-                                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: statusColor),
+                 child: Column(
+                   children: [
+                              Text('Progress Timeline', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
+                              const SizedBox(height: 16),
+                             _buildRealtimeTimeline(complaintId),    //  enhanced with icons and messages
+                            ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 20),
                 // Details Card
@@ -301,82 +275,79 @@ if (beforeImages.isEmpty && (statusString != 'Resolved' || afterImages.isEmpty))
         }).toList();
 
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Activity Timeline', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF0F1A3D))),
-            const SizedBox(height: 12),
-            ...events.map((event) => _buildTimelineItem(event)),
-          ],
-        );
-      },
-    );
-  }
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: events.map((event) => _buildTimelineItem(event)).toList(),
+                  );
+                  },
+                );
+            }
 
   Widget _buildTimelineItem(TimelineEvent event) {
-    Color getColor(String status) {
-      switch (status) {
-        case 'Pending': return Colors.orange;
-        case 'Approved': return Colors.green;
-        case 'InProgress': return Colors.blue;
-        case 'Resolved': return Colors.teal;
-        default: return Colors.grey;
-      }
+  Color getColor(String status) {
+    switch (status) {
+      case 'Pending': return Colors.orange;
+      case 'Approved': return Colors.green;
+      case 'InProgress': return Colors.blue;
+      case 'Resolved': return Colors.teal;
+      default: return Colors.grey;
     }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 10, height: 10, margin: const EdgeInsets.only(top: 4),
-            decoration: BoxDecoration(color: getColor(event.status), shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(event.status, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: getColor(event.status))),
-                if (event.message.isNotEmpty) Text(event.message, style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700])),
-                Text(DateFormat('dd MMM yyyy, hh:mm a').format(event.timestamp), style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
-  Widget _buildColorfulTimeline(String currentStatus) {
-    final statuses = [
-      {'title': 'Pending', 'icon': Icons.pending_actions, 'color': Colors.orange, 'isActive': true},
-      {'title': 'Approved', 'icon': Icons.check_circle_outline, 'color': Colors.blue,
-       'isActive': currentStatus == 'Approved' || currentStatus == 'InProgress' || currentStatus == 'Resolved'},
-      {'title': 'InProgress', 'icon': Icons.build_circle_outlined, 'color': Colors.purple,
-       'isActive': currentStatus == 'InProgress' || currentStatus == 'Resolved'},
-      {'title': 'Resolved', 'icon': Icons.verified_outlined, 'color': Colors.green, 'isActive': currentStatus == 'Resolved'},
-    ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: statuses.map((s) {
-        return Column(
-          children: [
-            Container(
-              width: 50, height: 50,
-              decoration: BoxDecoration(
-                gradient: (s['isActive'] as bool) ? LinearGradient(colors: [s['color'] as Color, (s['color'] as Color).withOpacity(0.8)]) : null,
-                color: (s['isActive'] as bool) ? null : Colors.grey[300],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(s['icon'] as IconData, color: (s['isActive'] as bool) ? Colors.white : Colors.grey[500], size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(s['title'] as String, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: (s['isActive'] as bool) ? s['color'] as Color : Colors.grey[600])),
-          ],
-        );
-      }).toList(),
-    );
+  IconData getIcon(String status) {
+    switch (status) {
+      case 'Pending': return Icons.pending_actions;
+      case 'Approved': return Icons.check_circle_outline;
+      case 'InProgress': return Icons.build_circle_outlined;
+      case 'Resolved': return Icons.verified_outlined;
+      default: return Icons.info_outline;
+    }
   }
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: getColor(event.status),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(getIcon(event.status), color: Colors.white, size: 28),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event.status,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: getColor(event.status),
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (event.message.isNotEmpty)
+                Text(
+                  event.message,
+                  style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[800]),
+                ),
+              const SizedBox(height: 4),
+              Text(
+                DateFormat('dd MMM yyyy, hh:mm a').format(event.timestamp),
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildDetailRow(String label, String value, IconData icon) {
     return Row(
